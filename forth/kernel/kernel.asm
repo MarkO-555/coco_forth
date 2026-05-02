@@ -188,12 +188,27 @@ TRIG_BASE       EQU     $7800           ; high in 32K RAM, below stacks
 BOOTSTRAP
         ORCC    #$50            ; mask IRQ/FIRQ
         STA     $FFDF           ; all-RAM mode
-        LDX     #$1000          ; source: staged kernel
+        LDX     #$1000          ; source: staged kernel (patched by fc.py)
         LDY     #KERNEL_ORG     ; dest: final location
 BOOT_LP LDD     ,X++
         STD     ,Y++
         CMPY    #KERN_END
         BLO     BOOT_LP
+        ; Optional app relocation: when fc.py's --base places the app in
+        ; upper 32K (where ROMs occlude LOADM), the app is staged in low
+        ; RAM and copied here.  fc.py patches the two sentinels $CAFE and
+        ; $BABE: source addr and end-of-copy addr respectively.  When no
+        ; relocation is needed, both are patched to APP_BASE so CMPX/BEQ
+        ; immediately skips the copy.
+        LDX     #$CAFE          ; app source (sentinel, patched by fc.py)
+        CMPX    #APP_BASE
+        BEQ     APP_NO_COPY
+        LDY     #APP_BASE       ; app dest = APP_BASE
+APP_LP  LDA     ,X+
+        STA     ,Y+
+        CMPY    #$BABE          ; app end (sentinel, patched by fc.py)
+        BLO     APP_LP
+APP_NO_COPY
         JMP     START
         ENDC
 

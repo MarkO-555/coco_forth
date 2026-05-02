@@ -1779,9 +1779,53 @@ def main():
                         kernel_records[idx] = (addr, bytes(payload))
                         break
 
-        if stage_cursor > app_base:
-            sys.exit(f"fc.py: staged kernel ends at ${stage_cursor:04X}, "
-                     f"overlaps app base ${app_base:04X}")
+        # Decide where the app records load.  If app_base is in upper 32K
+        # in all-RAM mode, BASIC's LOADM can't write there (BASIC ROM still
+        # occupies $A000-$BFFF until the bootstrap pages it out).  Stage the
+        # app in low RAM and have the bootstrap copy it to APP_BASE.
+        SENTINEL_STAGE = 0xCAFE
+        SENTINEL_END   = 0xBABE
+        relocate_app = (not rom_mode) and app_base >= 0x8000
+        if relocate_app:
+            app_stage = stage_cursor   # right after staged kernel records
+            if app_stage + len(code) > 0x8000:
+                sys.exit(f"fc.py: staged app at ${app_stage:04X}+{len(code)} "
+                         f"would exceed low RAM (need staging address < $8000)")
+            app_end_patch = app_base + len(code)
+            app_stage_patch = app_stage
+        else:
+            if stage_cursor > app_base:
+                sys.exit(f"fc.py: staged kernel ends at ${stage_cursor:04X}, "
+                         f"overlaps app base ${app_base:04X}")
+            app_stage = app_base
+            # Patch sentinels to APP_BASE so CMPX/BEQ skips the copy
+            app_stage_patch = app_base
+            app_end_patch = app_base
+
+        # Patch bootstrap sentinels (only if the kernel exposes them)
+        if not rom_mode:
+            for idx, (addr, payload) in enumerate(kernel_records):
+                if addr >= 0xE000:
+                    continue   # only the bootstrap record (low addr)
+                payload = bytearray(payload)
+                patched = False
+                # Patch $CAFE → app_stage_patch
+                for j in range(len(payload) - 1):
+                    if payload[j] == 0xCA and payload[j+1] == 0xFE:
+                        payload[j]   = (app_stage_patch >> 8) & 0xFF
+                        payload[j+1] = app_stage_patch & 0xFF
+                        patched = True
+                        break
+                # Patch $BABE → app_end_patch
+                for j in range(len(payload) - 1):
+                    if payload[j] == 0xBA and payload[j+1] == 0xBE:
+                        payload[j]   = (app_end_patch >> 8) & 0xFF
+                        payload[j+1] = app_end_patch & 0xFF
+                        patched = True
+                        break
+                if patched:
+                    kernel_records[idx] = (addr, bytes(payload))
+
         if hole_start is not None and hole_start > app_base:
             # Split app around hole: two DECB records, skip the hole
             hole_off = hole_start - app_base
@@ -1793,7 +1837,7 @@ def main():
                 app_records.append((hole_end, part2))
             code_size = len(part1) + len(part2)
         else:
-            app_records = [(app_base, bytes(code))]
+            app_records = [(app_stage, bytes(code))]
             code_size = len(code)
         write_decb(kernel_records + app_records, exec_addr, out_file)
         hole_msg = f", hole ${hole_start:04X}-${hole_end-1:04X}" if hole_start else ""
