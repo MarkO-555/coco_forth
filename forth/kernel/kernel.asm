@@ -313,6 +313,8 @@ CFA_TWOSTAR     FDB     CODE_TWOSTAR
 CFA_TWOSLASH    FDB     CODE_TWOSLASH
 CFA_ZEROMIN     FDB     CODE_ZEROMIN
 CFA_WITHIN      FDB     CODE_WITHIN
+CFA_RNG         FDB     CODE_RNG
+CFA_RND         FDB     CODE_RND
 
 ;;; ─── Sprite data table ─────────────────────────────────────────────────────
 ;;; DOVAR entry: calling sprite-data pushes the address of the first byte.
@@ -1221,6 +1223,60 @@ RSH_DONE
         STD     ,U              ; store shifted value
         LDY     ,X++            ; NEXT
         JMP     [,Y]
+
+;;; ─── RNG ( -- ) ────────────────────────────────────────────────────────────
+;;; Advance VAR_SEED in place using LCG: seed = seed * 25173 + 13849.
+;;; 25173 = $6255, 13849 = $3619.  Same 16x16->low16 algorithm as CODE_MUL.
+
+CODE_RNG
+        LDA     VAR_SEED        ; A = seed_hi
+        LDB     #$55            ; B = 25173_lo
+        MUL                     ; D = seed_hi * 25173_lo
+        PSHS    B               ; cross term 1
+        LDA     VAR_SEED+1      ; A = seed_lo
+        LDB     #$62            ; B = 25173_hi
+        MUL                     ; D = seed_lo * 25173_hi
+        ADDB    ,S+             ; cross_sum = cross1 + low8(seed_lo*hi)
+        PSHS    B               ; save cross_sum
+        LDA     VAR_SEED+1      ; A = seed_lo
+        LDB     #$55            ; B = 25173_lo
+        MUL                     ; D = seed_lo * 25173_lo (base product)
+        ADDA    ,S+             ; result_hi = base_hi + cross_sum
+        ADDD    #$3619          ; + 13849
+        STD     VAR_SEED        ; back to seed
+        LDY     ,X++            ; NEXT
+        JMP     [,Y]
+
+;;; ─── RND ( n -- 0..n-1 ) ───────────────────────────────────────────────────
+;;; Advance RNG, then return (n-1) AND high-byte-of-seed.  Designed for
+;;; power-of-two n up to 256 (matches the Forth shim it replaces).
+
+CODE_RND
+        ;; Inline RNG advance.
+        LDA     VAR_SEED
+        LDB     #$55
+        MUL
+        PSHS    B
+        LDA     VAR_SEED+1
+        LDB     #$62
+        MUL
+        ADDB    ,S+
+        PSHS    B
+        LDA     VAR_SEED+1
+        LDB     #$55
+        MUL
+        ADDA    ,S+
+        ADDD    #$3619
+        STD     VAR_SEED
+        ;; Mask (n-1) with seed_hi.  Result high byte = 0.
+        LDD     ,U              ; D = n
+        SUBD    #1              ; D = n-1
+        CLRA                    ; high byte of result = 0
+        ANDB    VAR_SEED        ; B = (n-1)_lo AND seed_hi
+        STD     ,U              ; replace TOS
+        LDY     ,X++            ; NEXT
+        JMP     [,Y]
+
 
 ;;; ─── MIN ( n1 n2 -- smaller ) ───────────────────────────────────────────────
 ;;; Keep the smaller of two signed values.
@@ -2404,6 +2460,8 @@ VAR_RGROWH      FCB     10      ; row height for cy positioning (pixels)
 VAR_BEAM_BUF    FDB     0       ; path buffer pointer (during trace/draw/restore)
 VAR_BEAM_VRAM   FDB     0       ; VRAM byte address scratch
 VAR_BEAM_CNT    FDB     0       ; pixel count / loop counter scratch
+;;; LCG random seed (used by rng/rnd CODE words).
+VAR_SEED        FDB     0       ; 16-bit seed; apps may store directly
 
 KERN_END                        ; end marker — bootstrap copies $E000..KERN_END-1
 

@@ -114,6 +114,8 @@ def kernel_words(symbols):
         '2/':          'CFA_TWOSLASH',
         '0min':        'CFA_ZEROMIN',
         'within':      'CFA_WITHIN',
+        'rng':         'CFA_RNG',
+        'rnd':         'CFA_RND',
         'sprite-data': 'CFA_SPRITE_DATA',
         'font-data':   'CFA_FONT_DATA',
         'sin-data':    'CFA_SIN_DATA',
