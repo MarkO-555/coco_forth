@@ -1,9 +1,9 @@
 \ trig.fs — Sine/cosine lookup table for angle-based operations
 \
 \ Provides: init-sin, sin, cos, angle-dx, angle-dy
-\ Requires: kernel primitives C@, *, +, -, /MOD, NEGATE, RSHIFT,
-\           DUP, DROP, SWAP, OVER, @, !, <, >, 0=, IF, ELSE, THEN
-\           datawrite.fs (tp, tb)
+\ Requires: kernel primitives C@, *, +, -, /MOD, NEGATE, RSHIFT, CMOVE,
+\           sin-data, DUP, DROP, SWAP, OVER, @, !, <, >, 0=,
+\           IF, ELSE, THEN
 \
 \ 91-entry sine table covering 0-90 degrees.  Values are 7-bit
 \ fixed-point: 0 = 0.000, 127 = 1.000 (actually 0.992).
@@ -24,28 +24,12 @@
 \ $86CC in all-RAM mode, $7800 in ROM mode).  Used directly below since
 \ fc.py's CONSTANT requires a literal value.
 
+\ Sin table is now stored as raw FCB bytes in the kernel; init-sin
+\ just CMOVEs them into place at trig-base.  Saves ~25,000 cycles of
+\ boot-time work and ~500 bytes of app binary vs the per-byte tb form.
+
 : init-sin  ( -- )
-  trig-base tp !
-  \  0- 9: sin(0)..sin(9)
-    0 tb   2 tb   4 tb   7 tb   9 tb  11 tb  13 tb  15 tb  18 tb  20 tb
-  \ 10-19
-   22 tb  24 tb  26 tb  28 tb  30 tb  33 tb  35 tb  37 tb  39 tb  41 tb
-  \ 20-29
-   43 tb  45 tb  47 tb  49 tb  51 tb  53 tb  55 tb  57 tb  58 tb  60 tb
-  \ 30-39
-   64 tb  65 tb  67 tb  69 tb  71 tb  72 tb  74 tb  76 tb  77 tb  79 tb
-  \ 40-49
-   82 tb  83 tb  85 tb  86 tb  88 tb  90 tb  91 tb  92 tb  94 tb  95 tb
-  \ 50-59
-   97 tb  98 tb 100 tb 101 tb 102 tb 104 tb 105 tb 106 tb 107 tb 108 tb
-  \ 60-69
-  110 tb 111 tb 112 tb 113 tb 114 tb 115 tb 116 tb 117 tb 117 tb 118 tb
-  \ 70-79
-  119 tb 120 tb 120 tb 121 tb 122 tb 122 tb 123 tb 123 tb 124 tb 124 tb
-  \ 80-89
-  125 tb 125 tb 126 tb 126 tb 126 tb 126 tb 127 tb 127 tb 127 tb 127 tb
-  \ 90
-  127 tb ;
+  sin-data trig-base 91 CMOVE ;
 
 \ ── Signed divide by 128 ────────────────────────────────────────────────
 \ RSHIFT is logical (unsigned) on the 6809, so we handle sign manually.

@@ -413,6 +413,27 @@ CFA_FONT_DATA   FDB     DOVAR
         FCB     $FC,$0C,$0C,$FC,$C0,$C0,$FC,$00  ; $5A Z
 
 
+;;; ─── Sine lookup table ────────────────────────────────────────────────────
+;;; DOVAR entry: calling sin-data pushes the address of the first byte.
+;;; 91 entries: sin(0°)..sin(90°) as 7-bit fixed-point (127 = 1.000).
+;;; Cosine and 0..360° range derived by quadrant mirroring in trig.fs.
+;;;
+;;; Application copies to its trig-base region with:
+;;;   sin-data trig-base 91 CMOVE
+
+CFA_SIN_DATA    FDB     DOVAR
+        FCB     0,2,4,7,9,11,13,15,18,20            ; sin( 0- 9)
+        FCB     22,24,26,28,30,33,35,37,39,41       ; sin(10-19)
+        FCB     43,45,47,49,51,53,55,57,58,60       ; sin(20-29)
+        FCB     64,65,67,69,71,72,74,76,77,79       ; sin(30-39)
+        FCB     82,83,85,86,88,90,91,92,94,95       ; sin(40-49)
+        FCB     97,98,100,101,102,104,105,106,107,108  ; sin(50-59)
+        FCB     110,111,112,113,114,115,116,117,117,118 ; sin(60-69)
+        FCB     119,120,120,121,122,122,123,123,124,124 ; sin(70-79)
+        FCB     125,125,126,126,126,126,127,127,127,127 ; sin(80-89)
+        FCB     127                                 ; sin(90)
+
+
 ;;; ─── EXIT ( -- ) ─────────────────────────────────────────────────────────────
 ;;; Return from a colon definition.
 

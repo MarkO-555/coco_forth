@@ -87,6 +87,7 @@ Markdown working notes:
 - Kill XRoar before relaunching: `pkill -9 xroar` before `make run`
 - Never spam-launch XRoar — one launch, check result, wait
 - Auto-launch XRoar for testing: pkill, build, and run automatically when ready to test
+- Always build BOTH kernels after changing `forth/kernel/kernel.asm`: run `make` (ROM mode) AND `make allram` in `forth/kernel/`. The default `make` only rebuilds the ROM-mode kernel; downstream all-RAM demos (e.g. spacewarp) link against `build/kernel-allram.bin` and will silently use the stale variant if it isn't rebuilt.
 - Write theoretical analysis first, then implement, then re-measure
 - Measure cycle counts, don't estimate — use `fc.py --cycles` and exact hardware constants
 - Don't pause unless judgement, visual, or physical feedback is needed

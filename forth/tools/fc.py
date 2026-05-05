@@ -116,6 +116,7 @@ def kernel_words(symbols):
         'within':      'CFA_WITHIN',
         'sprite-data': 'CFA_SPRITE_DATA',
         'font-data':   'CFA_FONT_DATA',
+        'sin-data':    'CFA_SIN_DATA',
         'vsync':       'CFA_VSYNC',
         'wait-past-row': 'CFA_WAIT_PAST_ROW',
         'count-blanking': 'CFA_COUNT_BLANKING',
