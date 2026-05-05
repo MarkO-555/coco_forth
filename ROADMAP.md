@@ -18,7 +18,6 @@ Goal: every shipped demo is exceptional and bullet-proof. No rough
 edges in the showcase set before we add more surface area.
 
 **Critical (blocks confidence in current shipset)**
-- 433 — `sound` demo: stub references non-existent `SND_PLAY`; either remove or mark EXPERIMENTAL
 - 440 — `fn-ready` spins forever when no FujiNet; add timeout
 - 441 — `clock` graceful fallback when FujiNet absent (depends on 440)
 
@@ -67,8 +66,7 @@ Goal: pad out the standard library so apps don't reinvent primitives.
 - 34 — Flood fill (PAINT)
 - 35 — Turtle graphics (DRAW)
 - 415 — Promote rng/rnd to kernel primitives
-- 36 — Sound / DAC access *(blocked by sound investigation)*
-- 37 — PLAY music command *(blocked by 36)*
+- 37 — PLAY music command (build on `forth/lib/sound.fs`)
 
 ---
 
@@ -103,8 +101,7 @@ suggestion.
 - 24 — Serial terminal (real I/O, pairs with FujiNet story)
 - 19 — Maze generator + navigator (algorithmic)
 - 14 — Drawing program (interactive, joystick + paint)
-- 15 — Sound/music player *(blocked by sound)*
-- 42 — Electronic piano *(blocked by sound)*
+- 42 — Electronic piano (uses `forth/lib/sound.fs`)
 
 **Defer or drop:**
 - 18 — Clock/stopwatch (superseded by `clock` demo)

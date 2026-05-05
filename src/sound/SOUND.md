@@ -1,6 +1,19 @@
-# Sound on the CoCo — Investigation Notes
+# Sound on the CoCo — Investigation Notes (Historical)
 
 *March 26, 2026 — Paul Cunningham + Claude*
+
+> **Status (2026-05-05):** Most of this document's "no sound" findings
+> were due to relying on BASIC's PIA initialization in code that ran
+> after the all-RAM kernel paged BASIC's ROMs out.  The fix turned out
+> to be simple — do our own explicit PIA setup using the canonical
+> values from Dungeons of Daggorath's `ONCE.ASM` (`$FF01 = $FF03 = $34`,
+> `$FF21 = $34`, `$FF23 = $3C`).  With that in place, DAC audio works
+> identically in ROM mode and all-RAM mode, since the PIA registers
+> at `$FF00-$FF3F` live in the I/O range and aren't affected by SAM TY.
+>
+> The working implementation lives in `sound.fs`; see `README.md` for
+> the up-to-date description.  This document is preserved for the
+> historical record only.
 
 ## Goal
 
