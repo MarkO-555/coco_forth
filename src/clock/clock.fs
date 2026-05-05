@@ -215,6 +215,9 @@ VARIABLE clk-mn
 VARIABLE clk-sc
 VARIABLE vs-cnt
 VARIABLE sync-flash         \ seconds remaining to display "RTC SYNC"
+VARIABLE flash-pending      \ frames remaining to repaint the RTC SYNC row
+                            \ (set to 2 on visual-state changes so both
+                            \  back buffers catch up; otherwise idle)
 
 2 CONSTANT SYNC-FLASH-COUNT
 
@@ -812,19 +815,25 @@ VARIABLE _dc  VARIABLE _dr
 \ Drawn for SYNC-FLASH-COUNT consecutive ticks after each sync, then
 \ overwritten with spaces.  Position: char row 1, columns 23..30.
 
+\ Only repaints when flash-pending > 0, which is set to 2 on every
+\ visual-state change (sync started / sync ended) so both back buffers
+\ catch up.  Idle frames skip the 8-cell repaint entirely.
 : render-sync-flash  ( -- )
-  sync-flash @ 0 > IF
-    CHAR R 23 1 rg-char
-    CHAR T 24 1 rg-char
-    CHAR C 25 1 rg-char
-    32     26 1 rg-char
-    CHAR S 27 1 rg-char
-    CHAR Y 28 1 rg-char
-    CHAR N 29 1 rg-char
-    CHAR C 30 1 rg-char
-  ELSE
-    32 23 1 rg-char  32 24 1 rg-char  32 25 1 rg-char  32 26 1 rg-char
-    32 27 1 rg-char  32 28 1 rg-char  32 29 1 rg-char  32 30 1 rg-char
+  flash-pending @ 0 > IF
+    sync-flash @ 0 > IF
+      CHAR R 23 1 rg-char
+      CHAR T 24 1 rg-char
+      CHAR C 25 1 rg-char
+      32     26 1 rg-char
+      CHAR S 27 1 rg-char
+      CHAR Y 28 1 rg-char
+      CHAR N 29 1 rg-char
+      CHAR C 30 1 rg-char
+    ELSE
+      32 23 1 rg-char  32 24 1 rg-char  32 25 1 rg-char  32 26 1 rg-char
+      32 27 1 rg-char  32 28 1 rg-char  32 29 1 rg-char  32 30 1 rg-char
+    THEN
+    -1 flash-pending +!
   THEN ;
 
 
@@ -903,7 +912,8 @@ VARIABLE _dc  VARIABLE _dr
   10  clk-hr !  10 clk-mn !  0  clk-sc !
   0   vs-cnt !
   0   fn-enabled !
-  SYNC-FLASH-COUNT sync-flash ! ;
+  SYNC-FLASH-COUNT sync-flash !
+  2 flash-pending ! ;
 
 30 CONSTANT FN-PROBE-TRIES   \ ~1-2 seconds of bit-banger pings
 
@@ -930,6 +940,7 @@ VARIABLE _dc  VARIABLE _dr
     0 vps-cnt !
     0 vs-cnt !
     SYNC-FLASH-COUNT sync-flash !
+    2 flash-pending !
   ELSE
     \ No FN — fall back to the development clock so the demo still runs.
     \ fake-time also sets fn-enabled=0 so we won't retry every minute.
@@ -1022,7 +1033,10 @@ VARIABLE date-pending       \ frames left to re-render YYYY.MM.DD
     clk-sc @ last-sc @ <> IF
       clk-sc @ last-sc !
       clk-sc @ 59 = fn-enabled @ AND IF sync-from-fn THEN
-      sync-flash @ 0 > IF -1 sync-flash +! THEN
+      sync-flash @ 0 > IF
+        -1 sync-flash +!
+        sync-flash @ 0= IF 2 flash-pending ! THEN
+      THEN
       2 ss-pending !              \ :SS always changes every second
       clk-mn @ last-mn @ <> IF
         clk-mn @ last-mn !
