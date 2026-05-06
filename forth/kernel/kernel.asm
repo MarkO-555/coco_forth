@@ -634,16 +634,23 @@ CODE_STORE
 ;;; ─── HALT ────────────────────────────────────────────────────────────────────
 ;;; Spin forever — end of application.
 
-;;; ─── DO ( limit start -- ) ( R: -- start limit ) ────────────────────────────
-;;; Pop limit and start from data stack, push both onto return stack.
-;;; Return stack layout after DO: TOS=index(start), NOS=limit.
+;;; ─── DO ( limit start -- ) ( R: -- old_LP limit index ) ─────────────────────
+;;; Pop limit and start from data stack; build a loop frame on the
+;;; return stack consisting of (old_LP, limit, index) and update
+;;; VAR_LP to point at the new index slot.  This lets I/J read the
+;;; loop index regardless of how many colon-call frames sit between
+;;; the loop body and the I invocation.
+;;; R-stack layout after DO: TOS=index, +2=limit, +4=old_LP.
 
 CODE_DO
+        LDD     VAR_LP          ; save old LP at deepest frame slot
+        STD     ,--S
         LDD     ,U              ; D = start (TOS)
         LDY     2,U             ; Y = limit (NOS)
         LEAU    4,U             ; pop both from data stack
-        STY     ,--S            ; push limit → NOS of return stack
-        STD     ,--S            ; push index → TOS of return stack
+        STY     ,--S            ; push limit
+        STD     ,--S            ; push index
+        STS     VAR_LP          ; LP = address of current index slot
         LDY     ,X++            ; NEXT
         JMP     [,Y]
 
@@ -664,7 +671,9 @@ CODE_LOOP
         LDY     ,X++            ; NEXT
         JMP     [,Y]
 LOOP_DONE
-        LEAS    4,S             ; pop index + limit from return stack
+        LDD     4,S             ; D = saved old LP
+        STD     VAR_LP          ; restore enclosing loop frame pointer
+        LEAS    6,S             ; pop index + limit + old_LP
         LEAX    2,X             ; skip over the offset cell
         LDY     ,X++            ; NEXT
         JMP     [,Y]
@@ -673,7 +682,8 @@ LOOP_DONE
 ;;; Copy the current loop index (TOS of return stack) to the data stack.
 
 CODE_I
-        LDD     ,S              ; D = loop index (TOS of R)
+        LDY     VAR_LP          ; Y = loop frame pointer
+        LDD     ,Y              ; D = current loop index
         STD     ,--U            ; push onto data stack
         LDY     ,X++            ; NEXT
         JMP     [,Y]
@@ -1434,7 +1444,9 @@ MDIST_AY
 ;;; Remove DO/LOOP control parameters from return stack for early EXIT.
 
 CODE_UNLOOP
-        LEAS    4,S             ; pop index + limit from return stack
+        LDD     4,S             ; D = saved old LP
+        STD     VAR_LP          ; restore enclosing loop frame pointer
+        LEAS    6,S             ; pop index + limit + old_LP
         LDY     ,X++            ; NEXT
         JMP     [,Y]
 
@@ -1477,7 +1489,9 @@ CODE_XOR
 ;;; Push the outer loop index in nested DO/LOOPs.
 
 CODE_J
-        LDD     4,S             ; outer index is 4 bytes deep
+        LDY     VAR_LP          ; Y = current loop frame pointer
+        LDY     4,Y             ; Y = enclosing frame's LP (chained)
+        LDD     ,Y              ; D = outer loop index
         STD     ,--U            ; push onto data stack
         LDY     ,X++            ; NEXT
         JMP     [,Y]
@@ -1511,7 +1525,9 @@ CODE_PLUS_LOOP
         LDY     ,X++            ; NEXT
         JMP     [,Y]
 PLOOP_DONE
-        LEAS    4,S             ; pop index + limit from return stack
+        LDD     4,S             ; D = saved old LP
+        STD     VAR_LP          ; restore enclosing loop frame pointer
+        LEAS    6,S             ; pop index + limit + old_LP
         LEAX    2,X             ; skip over offset cell
         LDY     ,X++            ; NEXT
         JMP     [,Y]
@@ -2462,6 +2478,10 @@ VAR_BEAM_VRAM   FDB     0       ; VRAM byte address scratch
 VAR_BEAM_CNT    FDB     0       ; pixel count / loop counter scratch
 ;;; LCG random seed (used by rng/rnd CODE words).
 VAR_SEED        FDB     0       ; 16-bit seed; apps may store directly
+;;; Loop frame pointer (used by DO/LOOP/+LOOP/I/J/UNLOOP).  Points at
+;;; the current innermost loop's index slot on the R-stack; the slot
+;;; above (4,LP) is the saved enclosing LP forming a linked chain.
+VAR_LP          FDB     0
 
 KERN_END                        ; end marker — bootstrap copies $E000..KERN_END-1
 
