@@ -15,14 +15,69 @@ Because `snd-tone` does its own explicit PIA setup, the demo runs identically un
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| 1 | Low tone (pitch 600, ~1/3 sec) |
-| 2 | Mid tone (pitch 300, ~1/3 sec) |
-| 3 | High tone (pitch 100, ~2/3 sec) |
-| 4 | Very high tone (pitch 50, ~1.3 sec) |
-| 5 | Descending sweep (7 stepped bursts) |
-| BREAK | Return to BASIC |
+| Key | Effect            | Word(s) used                       |
+|-----|-------------------|------------------------------------|
+| 1   | Low square        | `snd-tone(600, 100)`               |
+| 2   | Mid square        | `snd-tone(300, 300)`               |
+| 3   | High square       | `snd-tone(100, 600)`               |
+| 4   | Very high square  | `snd-tone(50, 1200)`               |
+| 5   | Smooth ascending sweep | loop of `snd-tone(220-I, 1)` |
+| 6   | Slow sawtooth     | `snd-saw(4, 30, 800)`              |
+| 7   | Fast sawtooth     | `snd-saw(16, 30, 800)`             |
+| 8   | Triangle          | `snd-tri` (= 2× `snd-saw`)         |
+| 9   | Sine              | `snd-sin(2, 120)`                  |
+| 0   | High-pitch hiss   | `snd-noise(1, 400)`                |
+| B   | Beep              | `snd-beep`                         |
+| Z   | Laser zap         | `snd-zap` (descending sweep)       |
+| X   | Boom              | `snd-boom` (= long `snd-noise`)    |
+| C   | Chirp             | `snd-chirp` (3 fast blips)         |
+| D   | Dock              | `snd-dock` (2-tone confirmation)   |
+| H   | Hit               | `snd-hit` (impact tick)            |
+| BREAK | Return to BASIC | `exit-basic`                       |
+
+## Cost Per Effect
+
+The CoCo runs at ~0.89 MHz, so 1 ms ≈ 890 cycles.
+
+### Library primitives (in `forth/lib/sound.fs`)
+
+| Word      | Bytes | Fixed cycles | Per-iteration             |
+|-----------|------:|-------------:|---------------------------|
+| snd-init  | 23    | 39           | —                         |
+| snd-tone  | 60    | 114          | ~14·pitch + 46 per cycle  |
+| snd-saw   | 59    | 124          | ~7·pitch + 43 per sample  |
+| snd-sin   | 107   | 208          | ~7·pitch + 126 per sample (44/half-wave) |
+| snd-pause | 14    | 212          | + 6 cy × count            |
+| snd-noise | 56    | 777          | + per-sample (rng + delay) |
+
+### Convenience effects (Forth-side wrappers)
+
+Cycle counts include the wrapper's overhead **and** the playback time at the wrapper's hard-coded parameters.
+
+| Word       | Bytes | Total cycles | ms   |
+|------------|------:|-------------:|-----:|
+| snd-beep   | 14    | 128,000      | 143  |
+| snd-hit    | 14    | 65,000       | 73   |
+| snd-dock   | 24    | 254,000      | 286  |
+| snd-tri    | 26    | 41,000       | 46   |
+| snd-zap    | 30    | 43,000       | 48   |
+| snd-sweep  | 36    | 109,000      | 122  |
+| snd-chirp  | 46    | 31,000       | 35   |
+| snd-boom   | 14    | ~291,000     | ~327 |
+
+### Demo-key totals (the inline calls in `dispatch`)
+
+| Key | Cycles    | ms    |
+|----:|----------:|------:|
+| 1   | 844,000   | 950   |
+| 2   | 1,274,000 | 1,430 |
+| 3   | 868,000   | 975   |
+| 4   | 895,000   | 1,005 |
+| 6,7 | 202,000   | 228   |
+| 9   | 739,000   | 830   |
+| 0   | ~97,000   | ~109  |
+
+Library footprint total: ~440 bytes (CODE words 249 + Forth wrappers ~190).
 
 ## Build
 

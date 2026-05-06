@@ -1361,9 +1361,12 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Sound Effects</h3>
         <p class="lib-path">INCLUDE lib/sound.fs</p>
-        <p>Square-wave and noise generation via the CoCo&rsquo;s 6-bit DAC.
-        Sound routines live in the bootstrap area and switch ROM mode
-        on/off automatically.</p>
+        <p>Tone, noise and waveform generation via the CoCo&rsquo;s 6-bit DAC
+        at <code>$FF20</code>. PIA initialization values come from
+        <em>Dungeons of Daggorath</em>&rsquo;s <code>ONCE.ASM</code>; the routines
+        work in both ROM-mode and all-RAM kernel builds.
+        <code>snd-sin</code> requires <code>init-sin</code> to have run first
+        (lib/trig.fs).</p>
         <table class="ref-table">
           <tr>
             <th style="width:110px">Word</th>
@@ -1371,14 +1374,34 @@ CODE fast-plot   ( x y -- )
             <th>Description</th>
           </tr>
           <tr>
+            <td class="word-name">snd-init</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Configure PIAs for DAC output (called automatically by snd-tone et al.). <em>CODE word.</em></td>
+          </tr>
+          <tr>
             <td class="word-name">snd-tone</td>
             <td class="stack-effect">( pitch duration -- )</td>
-            <td>Square wave: lower pitch = higher frequency. <em>CODE word.</em></td>
+            <td>Square wave: pitch = inter-toggle delay (lower = higher frequency); duration = toggle-cycle count. <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-saw</td>
+            <td class="stack-effect">( step pitch duration -- )</td>
+            <td>Sawtooth wave: each sample, the DAC value advances by <code>step</code> (positive = rising, $FC = falling). <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-tri</td>
+            <td class="stack-effect">( pitch duration -- )</td>
+            <td>Triangle wave: ramp up then ramp down (built from snd-saw).</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-sin</td>
+            <td class="stack-effect">( pitch duration -- )</td>
+            <td>Sine wave via the kernel sin table (requires init-sin); duration = number of half-waves. <em>CODE word.</em></td>
           </tr>
           <tr>
             <td class="word-name">snd-noise</td>
-            <td class="stack-effect">( duration -- )</td>
-            <td>White noise burst. <em>CODE word.</em></td>
+            <td class="stack-effect">( delay duration -- )</td>
+            <td>White-noise burst: <code>delay</code> = inter-sample wait (lower = higher-pitched hiss); <code>duration</code> = sample count. Uses the kernel rng for random DAC values.</td>
           </tr>
           <tr>
             <td class="word-name">snd-beep</td>
@@ -1388,7 +1411,7 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">snd-zap</td>
             <td class="stack-effect">( -- )</td>
-            <td>Rising zap (two ascending tones).</td>
+            <td>Rising zap (three ascending tones).</td>
           </tr>
           <tr>
             <td class="word-name">snd-boom</td>
@@ -1398,7 +1421,17 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">snd-chirp</td>
             <td class="stack-effect">( -- )</td>
-            <td>Short chirp (two tones).</td>
+            <td>Three descending tones.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-dock</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Two-tone &ldquo;dock&rdquo; effect.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-hit</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Quick hit / impact tick.</td>
           </tr>
         </table>
       </div>
