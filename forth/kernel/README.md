@@ -156,12 +156,12 @@ processors where Forth fits naturally without compromise.
 |---|---|---|
 | `0BRANCH` | `( flag -- )` | Branch by offset if flag is zero |
 | `BRANCH` | `( -- )` | Unconditional branch by offset |
-| `DO` | `( limit index -- )` | Begin a counted loop; push limit and index to return stack |
-| `LOOP` | — | Increment index; branch back if index < limit |
-| `I` | `( -- n )` | Push current loop index |
-| `J` | `( -- n )` | Push outer loop index (in nested DO...LOOP) |
-| `+LOOP` | `( n -- )` | Add n to index; branch back if limit not crossed |
-| `UNLOOP` | `( -- ) R:( limit index -- )` | Discard loop parameters from return stack |
+| `DO` | `( limit index -- )` | Begin a counted loop; push (saved old `VAR_LP`, limit, index) onto the return stack and update `VAR_LP` to point at the new index slot |
+| `LOOP` | — | Increment index; branch back if index < limit; on exit, restore the saved `VAR_LP` and pop the loop frame |
+| `I` | `( -- n )` | Push current loop index, read via `VAR_LP` — works correctly when called from a colon helper inside the loop body |
+| `J` | `( -- n )` | Push outer loop index (in nested DO...LOOP), found by walking one `VAR_LP` link |
+| `+LOOP` | `( n -- )` | Add n to index; branch back if limit not crossed; on exit, restore the saved `VAR_LP` |
+| `UNLOOP` | `( -- )` | Restore the enclosing `VAR_LP` and discard the current loop frame from the return stack. fc.py auto-emits one `UNLOOP` per active `DO` before any `EXIT` inside a loop body. |
 
 ### Return stack
 
@@ -184,6 +184,15 @@ processors where Forth fits naturally without compromise.
 |---|---|---|
 | `sprite-data` | `( -- addr )` | Address of kernel sprite FCB data (5 sprites × 12 bytes) |
 | `font-data` | `( -- addr )` | Address of kernel font FCB data (59 glyphs × 8 bytes) |
+| `sin-data` | `( -- addr )` | Address of kernel sine table (91 bytes, 7-bit fixed-point sin(0°)..sin(90°)) |
+
+### Random
+
+| Word | Stack | Description |
+|---|---|---|
+| `rng` | `( -- )` | Advance `VAR_SEED` via LCG (`seed = seed*25173 + 13849`) |
+| `rnd` | `( n -- 0..n-1 )` | Advance RNG and return `(n-1) AND high-byte-of-seed`. Designed for power-of-two n up to 256. |
+| `kvar-seed` | `( -- addr )` | (fc.py-exposed) address of `VAR_SEED` for direct read/write |
 
 ### Screen sync
 

@@ -426,7 +426,7 @@
         <tr>
           <td class="word-name">I</td>
           <td class="stack-effect">( -- n )</td>
-          <td>Push the current loop index onto the data stack.</td>
+          <td>Push the current loop index onto the data stack. Reads via the kernel's loop-frame pointer (<code>VAR_LP</code>), so it works correctly when called from a colon helper inside the loop body.</td>
         </tr>
         <tr>
           <td class="word-name">+LOOP</td>
@@ -436,12 +436,12 @@
         <tr>
           <td class="word-name">J</td>
           <td class="stack-effect">( -- n )</td>
-          <td>Push the index of the <em>outer</em> enclosing <code>DO</code> loop (for nested loops). <code>I</code> is the inner index.</td>
+          <td>Push the index of the <em>outer</em> enclosing <code>DO</code> loop (for nested loops). Walks one link of the <code>VAR_LP</code> chain. <code>I</code> is the inner index.</td>
         </tr>
         <tr>
           <td class="word-name">UNLOOP</td>
-          <td class="stack-effect">( -- ) R:( limit index -- )</td>
-          <td>Discard the current loop's index/limit from the return stack. Required before <code>EXIT</code> inside a <code>DO ... LOOP</code> to keep the return stack balanced.</td>
+          <td class="stack-effect">( -- )</td>
+          <td>Restore the enclosing loop frame and pop the current loop's (saved-LP, limit, index) triple from the return stack. fc.py auto-emits one <code>UNLOOP</code> per active <code>DO</code> before any <code>EXIT</code> inside a loop body, so the standard idiom <em>"<code>EXIT</code> inside <code>IF</code> inside <code>DO</code>"</em> works without manually writing <code>UNLOOP</code>.</td>
         </tr>
       </table>
 
@@ -604,6 +604,21 @@
           <td class="word-name">font-data</td>
           <td class="stack-effect">( -- addr )</td>
           <td>Address of kernel font data (59 glyphs &times; 8 bytes). Copy to <code>$9000</code> with <code>CMOVE</code>.</td>
+        </tr>
+        <tr>
+          <td class="word-name">sin-data</td>
+          <td class="stack-effect">( -- addr )</td>
+          <td>Address of kernel sine table (91 bytes, 7-bit fixed-point sin(0&deg;)..sin(90&deg;)). <code>init-sin</code> in <code>lib/trig.fs</code> copies these to <code>trig-base</code> with <code>CMOVE</code>.</td>
+        </tr>
+        <tr>
+          <td class="word-name">rng</td>
+          <td class="stack-effect">( -- )</td>
+          <td>Advance the kernel LCG seed in place (<code>VAR_SEED</code> *= 25173, += 13849). Use the high byte of the seed as the random source.</td>
+        </tr>
+        <tr>
+          <td class="word-name">rnd</td>
+          <td class="stack-effect">( n -- 0..n-1 )</td>
+          <td>Advance <code>rng</code>, then mask <code>(n-1)</code> with the high byte of the seed. Power-of-two <em>n</em> up to 256 gives a uniform distribution.</td>
         </tr>
       </table>
 
@@ -861,6 +876,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Random Numbers</h3>
         <p class="lib-path">INCLUDE lib/rng.fs</p>
+        <p><code>rng</code> and <code>rnd</code> are kernel primitives (see Kernel Primitives above). The lib file is now just a one-line shim that re-exports the kernel's <code>VAR_SEED</code> under its legacy name <code>seed</code>.</p>
         <table class="ref-table">
           <tr>
             <th style="width:110px">Word</th>
@@ -870,12 +886,12 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">seed</td>
             <td class="stack-effect">( -- addr )</td>
-            <td>Variable holding the current RNG state. Initialize to any non-zero value for a different sequence.</td>
+            <td>Address of <code>VAR_SEED</code> — the kernel's RNG state. Initialize to any non-zero value for a different sequence.</td>
           </tr>
           <tr>
             <td class="word-name">rng</td>
             <td class="stack-effect">( -- )</td>
-            <td>Advance the RNG. Updates <code>seed</code> using a 16-bit linear congruential generator (seed &times; 25173 + 13849).</td>
+            <td>Advance the RNG (kernel primitive). Updates <code>seed</code> using a 16-bit linear congruential generator (seed &times; 25173 + 13849).</td>
           </tr>
           <tr>
             <td class="word-name">rnd</td>
@@ -1294,7 +1310,7 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">init-sin</td>
             <td class="stack-effect">( -- )</td>
-            <td>Build the 91-entry sine table at <code>$86CC</code>. Call once at startup before using sin/cos.</td>
+            <td>Copy the kernel's <code>sin-data</code> (91 bytes) into <code>trig-base</code> via <code>CMOVE</code>. Call once at startup before using sin/cos. <em>(Boots in ~1,800 cy; previous per-byte version cost ~25,000 cy.)</em></td>
           </tr>
           <tr>
             <td class="word-name">sin</td>

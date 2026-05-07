@@ -110,6 +110,9 @@ Do not access, search, or modify files outside these paths. If a task appears to
 - Issues are in issues.jsonl, not GitHub
 - Issue workflow rules — must exist before work, tested before resolved, resolved before push
 - EXIT inside DO/LOOP now auto-inserts UNLOOP cells (fc.py 2026-05-06) so the standard idiom works without manual UNLOOP. The old "avoid EXIT inside IF/THEN" gotcha is resolved.
+- I and J walk a kernel-side loop-frame chain (`VAR_LP`, fc.py + kernel 2026-05-06) so I works correctly when called from a colon helper inside a DO loop body — no more "factor the loop body and the inner I returns garbage" surprise.
+- fc.py struct definers — `+FIELD` ( offset size — ), `CFIELD:` ( offset — , +1 byte ), `FIELD:` ( offset — , +2 bytes ). Use the idiom `0 CFIELD: foo.x ... CONSTANT /foo` for record layouts. Field words inline as literal offsets, zero call overhead.
+- fc.py compile-time data via `DATA[PY name <python> ]DATA`. Trailing expression must yield bytes-like; the bytes are spliced into the binary as a DOVAR-style word — calling `name` from Forth pushes the address of the first byte. Good for sin tables, sprite/font glyphs, level maps, and other static data that's easier to compute than to type.
 - Always track issues — create before starting, update during, never batch at end
 - Create issues before work — never retroactively; separate issues for distinct changes
 - Kill XRoar before relaunching — pkill xroar before make run

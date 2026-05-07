@@ -65,7 +65,6 @@ Goal: pad out the standard library so apps don't reinvent primitives.
 - 33 — Circle drawing (paired with `clock` work)
 - 34 — Flood fill (PAINT)
 - 35 — Turtle graphics (DRAW)
-- 415 — Promote rng/rnd to kernel primitives
 - 37 — PLAY music command (build on `forth/lib/sound.fs`)
 
 ---
