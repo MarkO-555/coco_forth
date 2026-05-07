@@ -89,8 +89,8 @@ product rolls off the end of the belt: a complete line of text.
 
 **chapter2-3** (aside)
 CoCo character standing back, arms crossed, admiring the screen. Screen shows
-"COLOR FORTH" on one line and "-----------" beneath it. Expression: satisfied, like
-an artist stepping back from a finished painting.
+"BARE NAKED FORTH" on one line and "----------------" beneath it. Expression:
+satisfied, like an artist stepping back from a finished painting.
 
 **chapter2-4** (small)
 CoCo character rolling up sleeves, determined expression, green screen glowing in the
@@ -110,14 +110,14 @@ background waiting for input.
 **chapter3-1** (opener)
 CoCo character holding a big stamp labeled "LETTER" and pressing it onto a grid of
 blank squares. Each square it stamps fills in with a letter. A stack of different stamps
-sits nearby: "COLOR", "FORTH", "TITLE". Enthusiastic expression, ink on its fingers.
+sits nearby: "BARE", "NAKED", "FORTH", "TITLE". Enthusiastic expression, ink on its fingers.
 
 **chapter3-2** (aside)
 A ruler laid across the alphabet — A at one end, Z at the other. A bracket shows the
 distance from A to O is 14. CoCo character reading the ruler, pencil in hand.
 
 **chapter3-3** (aside)
-A pyramid of boxes. Bottom row: LETTER, SP. Middle row: COLOR, FORTH. Top: TITLE.
+A pyramid of boxes. Bottom row: LETTER, SP. Middle row: BARE, NAKED, FORTH. Top: TITLE.
 Arrows point upward showing each level built on the one below. CoCo character standing
 beside it, arms crossed, looking satisfied.
 

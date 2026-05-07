@@ -92,15 +92,20 @@ CHAR ! EMIT HALT</pre>
 
       <p>
         Here's a word called <code>TITLE</code> that prints
-        <strong>COLOR FORTH</strong> and ends the line:
+        <strong>BARE NAKED FORTH</strong> and ends the line:
       </p>
 
 <pre class="forth" style="overflow:hidden">: TITLE
-  CHAR C EMIT
-  CHAR O EMIT
-  CHAR L EMIT
-  CHAR O EMIT
+  CHAR B EMIT
+  CHAR A EMIT
   CHAR R EMIT
+  CHAR E EMIT
+  32 EMIT
+  CHAR N EMIT
+  CHAR A EMIT
+  CHAR K EMIT
+  CHAR E EMIT
+  CHAR D EMIT
   32 EMIT
   CHAR F EMIT
   CHAR O EMIT
@@ -113,11 +118,11 @@ TITLE HALT</pre>
 
       <div class="screen-wrap">
         <div class="screen-label">Your CoCo's screen:</div>
-        <div class="screen">COLOR FORTH</div>
+        <div class="screen">BARE NAKED FORTH</div>
       </div>
 
       <p>
-        The word <code>TITLE</code> handles eleven characters and a
+        The word <code>TITLE</code> handles sixteen characters and a
         <code>CR</code>. The caller — the line <code>TITLE HALT</code>
         — doesn't need to know any of that. It just says: print the
         title. This is how Forth programs grow: one well-named word at
@@ -143,20 +148,21 @@ TITLE HALT</pre>
 
       <p>
         Suppose you want to print a horizontal rule — a row of dashes.
-        You could write eleven <code>CHAR - EMIT</code> calls in a row.
+        You could write sixteen <code>CHAR - EMIT</code> calls in a row.
         Or you could define a word that prints a single dash, and then
-        call it eleven times:
+        call it sixteen times:
       </p>
 
 <pre class="forth">: DASH  CHAR - EMIT ;
 
 : RULE
-  DASH DASH DASH DASH DASH DASH DASH DASH DASH DASH DASH
+  DASH DASH DASH DASH DASH DASH DASH DASH
+  DASH DASH DASH DASH DASH DASH DASH DASH
   CR ;</pre>
 
       <p>
         <code>DASH</code> is a tiny word. It does exactly one thing.
-        <code>RULE</code> calls it eleven times and finishes with
+        <code>RULE</code> calls it sixteen times and finishes with
         <code>CR</code>. Each word does its job cleanly. Notice that
         <code>DASH</code> has to be defined <em>before</em> <code>RULE</code>
         — in Forth, you can only call words that have already been defined.
@@ -179,11 +185,14 @@ TITLE HALT</pre>
 <pre class="forth">: DASH  CHAR - EMIT ;
 
 : RULE
-  DASH DASH DASH DASH DASH DASH DASH DASH DASH DASH DASH
+  DASH DASH DASH DASH DASH DASH DASH DASH
+  DASH DASH DASH DASH DASH DASH DASH DASH
   CR ;
 
 : TITLE
-  CHAR C EMIT CHAR O EMIT CHAR L EMIT CHAR O EMIT CHAR R EMIT
+  CHAR B EMIT CHAR A EMIT CHAR R EMIT CHAR E EMIT
+  32 EMIT
+  CHAR N EMIT CHAR A EMIT CHAR K EMIT CHAR E EMIT CHAR D EMIT
   32 EMIT
   CHAR F EMIT CHAR O EMIT CHAR R EMIT CHAR T EMIT CHAR H EMIT
   CR ;
@@ -192,7 +201,7 @@ TITLE RULE HALT</pre>
 
       <div class="screen-wrap">
         <div class="screen-label">Your CoCo's screen:</div>
-        <div class="screen">COLOR FORTH<br>-----------</div>
+        <div class="screen">BARE NAKED FORTH<br>----------------</div>
       </div>
 
       <p>
@@ -203,7 +212,7 @@ TITLE RULE HALT</pre>
       </p>
 
       <div class="illustration illustration-aside" style="width:293px;height:auto;padding:0;border:none;background:none;">
-        <img src="images/chapter2-3.png" alt="CoCo character arms crossed admiring a screen showing COLOR FORTH with a line beneath it" style="width:100%;height:auto;display:block;">
+        <img src="images/chapter2-3.png" alt="CoCo character arms crossed admiring a screen showing BARE NAKED FORTH with a line beneath it" style="width:100%;height:auto;display:block;">
       </div>
 
       <h2>What Happens When You Call a Word</h2>
@@ -264,19 +273,19 @@ TITLE RULE HALT</pre>
             <td style="padding: 6px 0;"></td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">CHAR C EMIT</td>
-            <td style="padding: 6px 16px 6px 0;">prints C</td>
-            <td style="padding: 6px 0; font-family: monospace;">C</td>
+            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">CHAR B EMIT</td>
+            <td style="padding: 6px 16px 6px 0;">prints B</td>
+            <td style="padding: 6px 0; font-family: monospace;">B</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">… EMIT × 10</td>
-            <td style="padding: 6px 16px 6px 0;">prints OLOR FORTH</td>
-            <td style="padding: 6px 0; font-family: monospace;">COLOR FORTH</td>
+            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">… EMIT × 15</td>
+            <td style="padding: 6px 16px 6px 0;">prints ARE NAKED FORTH</td>
+            <td style="padding: 6px 0; font-family: monospace;">BARE NAKED FORTH</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">CR</td>
             <td style="padding: 6px 16px 6px 0;">cursor moves to row 2</td>
-            <td style="padding: 6px 0; font-family: monospace;">COLOR FORTH<br><span style="font-size:0.8em;">(cursor here)</span></td>
+            <td style="padding: 6px 0; font-family: monospace;">BARE NAKED FORTH<br><span style="font-size:0.8em;">(cursor here)</span></td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 6px 16px 6px 0; font-family: monospace;">RULE</td>
@@ -284,9 +293,9 @@ TITLE RULE HALT</pre>
             <td style="padding: 6px 0;"></td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">DASH × 11</td>
-            <td style="padding: 6px 16px 6px 0;">prints 11 dashes (each calls DASH)</td>
-            <td style="padding: 6px 0; font-family: monospace;">-----------</td>
+            <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">DASH × 16</td>
+            <td style="padding: 6px 16px 6px 0;">prints 16 dashes (each calls DASH)</td>
+            <td style="padding: 6px 0; font-family: monospace;">----------------</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 6px 16px 6px 0; font-family: monospace; padding-left: 1.5em;">CR</td>

@@ -12,7 +12,7 @@
     <!-- Chapter opener -->
     <div class="chapter-opener">
       <div class="illustration illustration-opener" style="padding:0;border:none;background:none;">
-        <img src="images/chapter3-1.png" alt="CoCo character pressing a LETTER stamp onto a grid of squares, with COLOR, FORTH and TITLE stamps nearby" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <img src="images/chapter3-1.png" alt="CoCo character pressing a LETTER stamp onto a grid of squares, with BARE, NAKED, FORTH and TITLE stamps nearby" style="width:100%;height:100%;object-fit:cover;display:block;">
       </div>
       <div class="chapter-label">CHAPTER 3</div>
       <div class="chapter-title">Make Your Own Words</div>
@@ -31,8 +31,8 @@
       <p>
         In the first two chapters, every word you defined did exactly the
         same thing every time you called it. <code>TITLE</code> always
-        printed <strong>COLOR FORTH</strong>. <code>DASH</code> always
-        printed a dash. <code>RULE</code> always printed eleven of them.
+        printed <strong>BARE NAKED FORTH</strong>. <code>DASH</code> always
+        printed a dash. <code>RULE</code> always printed sixteen of them.
       </p>
 
       <p>
@@ -143,12 +143,18 @@
 
 <pre class="forth">: SP  32 EMIT ;
 
-: COLOR
-  CHAR C CHAR A - LETTER
-  CHAR O CHAR A - LETTER
-  CHAR L CHAR A - LETTER
-  CHAR O CHAR A - LETTER
-  CHAR R CHAR A - LETTER ;
+: BARE
+  CHAR B CHAR A - LETTER
+  CHAR A CHAR A - LETTER
+  CHAR R CHAR A - LETTER
+  CHAR E CHAR A - LETTER ;
+
+: NAKED
+  CHAR N CHAR A - LETTER
+  CHAR A CHAR A - LETTER
+  CHAR K CHAR A - LETTER
+  CHAR E CHAR A - LETTER
+  CHAR D CHAR A - LETTER ;
 
 : FORTH
   CHAR F CHAR A - LETTER
@@ -157,17 +163,17 @@
   CHAR T CHAR A - LETTER
   CHAR H CHAR A - LETTER ;
 
-: TITLE  COLOR SP FORTH CR ;
+: TITLE  BARE SP NAKED SP FORTH CR ;
 
 TITLE HALT</pre>
 
       <div class="screen-wrap">
         <div class="screen-label">Your CoCo's screen:</div>
-        <div class="screen">COLOR FORTH</div>
+        <div class="screen">BARE NAKED FORTH</div>
       </div>
 
       <div class="illustration illustration-aside" style="width:293px;height:auto;padding:0;border:none;background:none;">
-        <img src="images/chapter3-3.png" alt="Pyramid of boxes: LETTER and SP at base, COLOR and FORTH in middle, TITLE at top, with upward arrows" style="width:100%;height:auto;display:block;">
+        <img src="images/chapter3-3.png" alt="Pyramid of boxes: LETTER and SP at base, BARE NAKED FORTH in middle, TITLE at top, with upward arrows" style="width:100%;height:auto;display:block;">
       </div>
 
       <p>
@@ -186,7 +192,8 @@ TITLE HALT</pre>
 
       <div class="tip">
         <p>Words must be defined before they are used. <code>LETTER</code>
-        must appear before <code>COLOR</code>, and both must appear before
+        must appear before <code>BARE</code>, and all three of <code>BARE</code>,
+        <code>NAKED</code>, <code>FORTH</code> must appear before
         <code>TITLE</code>. Forth reads your source from top to bottom
         and only knows about words it has already seen.</p>
       </div>
@@ -196,12 +203,12 @@ TITLE HALT</pre>
       <p>
         When your program runs <code>TITLE</code>, the interpreter jumps
         into the <code>TITLE</code> definition and executes each word
-        inside it. <code>COLOR</code> is a word, so the interpreter
-        jumps into <em>that</em> definition. Inside <code>COLOR</code>,
-        the first thing it encounters is <code>CHAR C</code> — which
-        pushes 67 — then <code>CHAR A</code> which pushes 65, then
-        <code>-</code> which leaves 2, then <code>LETTER</code> which
-        adds 65 and emits character 67: <strong>C</strong>.
+        inside it. <code>BARE</code> is a word, so the interpreter
+        jumps into <em>that</em> definition. Inside <code>BARE</code>,
+        the first thing it encounters is <code>CHAR B</code> — which
+        pushes 66 — then <code>CHAR A</code> which pushes 65, then
+        <code>-</code> which leaves 1, then <code>LETTER</code> which
+        adds 65 and emits character 66: <strong>B</strong>.
       </p>
 
       <p>
@@ -217,7 +224,7 @@ TITLE HALT</pre>
         <ol style="margin: 0.5em 0 0 1.2em;">
           <li>Primitive words built into the kernel (<code>EMIT</code>, <code>+</code>, <code>-</code>, <code>CR</code>)</li>
           <li>Your utility words built from those (<code>LETTER</code>, <code>SP</code>)</li>
-          <li>Your domain words built from utilities (<code>COLOR</code>, <code>FORTH</code>)</li>
+          <li>Your domain words built from utilities (<code>BARE</code>, <code>NAKED</code>, <code>FORTH</code>)</li>
           <li>Your top-level program built from domain words (<code>TITLE</code>)</li>
         </ol>
         <p style="margin-top: 0.8em;">Each layer speaks at a higher level than the one below it.</p>

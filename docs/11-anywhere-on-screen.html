@@ -160,16 +160,18 @@
   AT  0 DO CHAR - EMIT LOOP ;
 
 : MAIN
-  \ Title centred on row 3
-  10  3 AT
-  CHAR C EMIT CHAR O EMIT CHAR L EMIT CHAR O EMIT CHAR R EMIT
+  \ Title centred on row 3 (16 chars in 32-col screen → col 8)
+  8  3 AT
+  CHAR B EMIT CHAR A EMIT CHAR R EMIT CHAR E EMIT
+  32 EMIT
+  CHAR N EMIT CHAR A EMIT CHAR K EMIT CHAR E EMIT CHAR D EMIT
   32 EMIT
   CHAR F EMIT CHAR O EMIT CHAR R EMIT CHAR T EMIT CHAR H EMIT
 
-  \ Underline the title
-  11 10  4 HBAR
+  \ Underline the title (16 dashes)
+  16 8  4 HBAR
 
-  \ Tagline on row 6
+  \ Tagline on row 6 (12 chars → col 10)
   10  6 AT
   CHAR O EMIT CHAR N EMIT 32 EMIT
   CHAR Y EMIT CHAR O EMIT CHAR U EMIT CHAR R EMIT 32 EMIT
@@ -183,8 +185,8 @@ MAIN HALT</pre>
       <div class="screen-wrap">
         <div class="screen-label">Your CoCo's screen:</div>
         <div class="screen" style="position:relative; height:6em;">
-          <span style="position:absolute; left:calc(10 * 0.88ch * 1.08); top:calc(3 * 1.4em);">COLOR FORTH</span>
-          <span style="position:absolute; left:calc(10 * 0.88ch * 1.08); top:calc(4 * 1.4em);">-----------</span>
+          <span style="position:absolute; left:calc(8 * 0.88ch * 1.08); top:calc(3 * 1.4em);">BARE NAKED FORTH</span>
+          <span style="position:absolute; left:calc(8 * 0.88ch * 1.08); top:calc(4 * 1.4em);">----------------</span>
           <span style="position:absolute; left:calc(10 * 0.88ch * 1.08); top:calc(6 * 1.4em);">ON YOUR COCO</span>
         </div>
       </div>
