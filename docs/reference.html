@@ -686,6 +686,11 @@
           <td>Shortcut for <code>2 +FIELD</code> — defines a 2-byte (cell) field.<br>Example:<br><code>0<br>&nbsp;&nbsp;CFIELD: ship.x<br>&nbsp;&nbsp;CFIELD: ship.y<br>&nbsp;&nbsp;FIELD:&nbsp; ship.vx<br>&nbsp;&nbsp;FIELD:&nbsp; ship.vy<br>CONSTANT /ship</code></td>
         </tr>
         <tr>
+          <td class="word-name">DATA[PY</td>
+          <td><code>DATA[PY <em>name</em><br>&nbsp;&nbsp;<em>…python statements…</em><br>&nbsp;&nbsp;<em>final-expression</em><br>]DATA</code></td>
+          <td>Compile-time data generation. The Python block runs inside fc.py; the final expression must yield a <code>bytes</code> object or an iterable of ints (0–255). Those bytes are spliced into the output binary as a DOVAR-style word — calling <em>name</em> from Forth pushes the address of the first byte. Use for sin tables, sprite/font data, level maps, and any other static data that's easier to compute than to type out.<br>Example: <code>DATA[PY sin-q&nbsp;&nbsp;<br>&nbsp;&nbsp;import math<br>&nbsp;&nbsp;bytes(int(127*math.sin(math.radians(d))) for d in range(91))<br>]DATA</code></td>
+        </tr>
+        <tr>
           <td class="word-name">CHAR</td>
           <td><code>CHAR c</code></td>
           <td>Push the ASCII value of the next character. <code>CHAR A</code> compiles as <code>LIT 65</code>.</td>

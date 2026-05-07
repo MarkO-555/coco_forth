@@ -148,6 +148,10 @@ def tokenize(source, base_dir=None):
     assembly text.  CODE blocks emit sentinel tokens:
         __CODE__  name  <raw-asm-text>  __ENDCODE__
 
+    DATA[PY ... ]DATA blocks run Python at compile time to splice computed
+    bytes into the binary as a DOVAR-style word.  They emit sentinel tokens:
+        __DATA__  name  <raw-python-source>  __ENDDATA__
+
     INCLUDE <filename> splices the named file's tokens at the point of the
     directive.  The filename is resolved relative to base_dir (the directory
     of the including file).  Nested INCLUDEs are handled recursively.
@@ -156,6 +160,9 @@ def tokenize(source, base_dir=None):
     in_code_block = False
     code_name = None
     code_lines = []
+    in_data_block = False
+    data_name = None
+    data_lines = []
     in_block_comment = False
 
     for line in source.split('\n'):
@@ -181,6 +188,17 @@ def tokenize(source, base_dir=None):
                 code_lines = []
             else:
                 code_lines.append(line)
+            continue
+
+        if in_data_block:
+            stripped = line.strip()
+            if stripped.upper() == ']DATA':
+                result.extend(['__DATA__', data_name, '\n'.join(data_lines), '__ENDDATA__'])
+                in_data_block = False
+                data_name = None
+                data_lines = []
+            else:
+                data_lines.append(line)
             continue
 
         # Strip line comment (everything after \)
@@ -212,6 +230,15 @@ def tokenize(source, base_dir=None):
             code_name = tokens_on_line[1]
             code_lines = []
             in_code_block = True
+            continue
+
+        # Check for DATA[PY block start
+        if tokens_on_line[0].upper() == 'DATA[PY':
+            if len(tokens_on_line) < 2:
+                raise SyntaxError("DATA[PY requires a word name")
+            data_name = tokens_on_line[1]
+            data_lines = []
+            in_data_block = True
             continue
 
         # Process normal tokens, with special handling for string literals.
@@ -281,6 +308,7 @@ def parse(tokens):
     code_definitions = {}   # name → raw asm text (app-space CODE words)
     kcode_definitions = {}  # name → raw asm text (kernel-space KCODE words)
     variables        = []   # variable names in declaration order
+    data_blocks      = {}   # name → bytes (from DATA[PY ... ]DATA)
     main_thread      = []
 
     current_def = None
@@ -308,6 +336,46 @@ def parse(tokens):
                 kcode_definitions[name] = asm_text
             else:
                 code_definitions[name] = asm_text
+            i += 4
+            continue
+
+        if tok == '__DATA__':
+            name = tokens[i + 1].lower()
+            py_source = tokens[i + 2]
+            # i+3 is __ENDDATA__
+            if name in definitions or name in code_definitions or name in kcode_definitions or name in data_blocks or name in variables:
+                raise SyntaxError(f"DATA[PY] {name!r} collides with an existing definition")
+            # Run the Python source.  The block is a list of statements ending
+            # in an expression whose value is the data bytes.  We wrap the
+            # source so the trailing expression sets _result.
+            try:
+                import textwrap as _tw
+                src = _tw.dedent(py_source).rstrip()
+                lines_ = src.split('\n')
+                # Find the last non-empty line — that's the value-producing expression.
+                last_idx = len(lines_) - 1
+                while last_idx >= 0 and not lines_[last_idx].strip():
+                    last_idx -= 1
+                if last_idx < 0:
+                    raise SyntaxError("DATA[PY block produced no expression")
+                lines_[last_idx] = f"_result = ({lines_[last_idx]})"
+                wrapped = '\n'.join(lines_)
+                ns = {}
+                exec(wrapped, ns)
+                value = ns.get('_result')
+            except Exception as e:
+                raise SyntaxError(f"DATA[PY {name!r}] failed: {e}")
+            # Coerce value to bytes.
+            if isinstance(value, (bytes, bytearray)):
+                blob = bytes(value)
+            else:
+                try:
+                    blob = bytes(int(b) & 0xFF for b in value)
+                except Exception as e:
+                    raise SyntaxError(f"DATA[PY {name!r}] result must be bytes-like or iterable of ints; got {type(value).__name__}: {e}")
+            if not blob:
+                raise SyntaxError(f"DATA[PY {name!r}] produced 0 bytes")
+            data_blocks[name] = blob
             i += 4
             continue
 
@@ -503,7 +571,7 @@ def parse(tokens):
     if current_def is not None:
         raise SyntaxError(f"Unterminated definition: {current_def!r}")
 
-    return definitions, variables, main_thread, code_definitions, kcode_definitions
+    return definitions, variables, main_thread, code_definitions, kcode_definitions, data_blocks
 
 
 # ── CODE word assembly ────────────────────────────────────────────────────────
@@ -774,7 +842,7 @@ def item_size(item):
 
 def compile_forth(definitions, variables, main_thread, code_definitions,
                   symbols, app_base, hole_start=None, hole_end=None,
-                  kcode_cfas=None):
+                  kcode_cfas=None, data_blocks=None):
     """
     Two-pass compiler.
 
@@ -880,6 +948,18 @@ def compile_forth(definitions, variables, main_thread, code_definitions,
         cursor += 2                                      # DOVAR (the CFA cell)
         cursor += 2                                      # data cell (16-bit, init 0)
 
+    # DATA[PY] blocks: DOVAR cell + raw bytes.  Calling the named word
+    # pushes the address of the first byte (DOVAR pushes CFA+2).
+    data_cfa = {}
+    if data_blocks:
+        for name, blob in data_blocks.items():
+            db_size = 2 + len(blob)
+            cursor = skip_hole(cursor)
+            if would_cross_hole(cursor, db_size):
+                cursor = hole_end
+            data_cfa[name] = cursor
+            cursor += db_size
+
     # ── Re-assemble CODE words with variable addresses ───────────────────────
     # Now that var_cfa is known, re-assemble so CODE words can use FVAR_* EQUs.
     # Data cell = CFA + 2 (skip the DOVAR pointer to get the actual storage).
@@ -962,6 +1042,8 @@ def compile_forth(definitions, variables, main_thread, code_definitions,
                 emit_word(word_cfa[name])
             elif name in var_cfa:
                 emit_word(var_cfa[name])
+            elif name in data_cfa:
+                emit_word(data_cfa[name])
             elif name in kwords:
                 emit_word(kwords[name])
             elif kcode_cfas and name in kcode_cfas:
@@ -992,6 +1074,13 @@ def compile_forth(definitions, variables, main_thread, code_definitions,
         pad_to(var_cfa[name])
         emit_word(DOVAR)        # CFA cell
         emit_word(0)            # data cell, initialized to 0
+
+    # DATA[PY] blocks: DOVAR cell + raw bytes from compile-time Python.
+    if data_blocks:
+        for name, blob in data_blocks.items():
+            pad_to(data_cfa[name])
+            emit_word(DOVAR)
+            buf.extend(blob)
 
     return buf
 
@@ -1659,7 +1748,7 @@ def main():
     src_path             = Path(args.source)
     source               = src_path.read_text()
     tokens               = tokenize(source, base_dir=src_path.parent)
-    defs, variables, main, code_defs, kcode_defs = parse(tokens)
+    defs, variables, main, code_defs, kcode_defs, data_blocks = parse(tokens)
 
     # Inject kernel symbols as Forth CONSTANTs:
     #   VAR_*        → KVAR-*        (variable addresses)
@@ -1701,7 +1790,7 @@ def main():
 
     code = compile_forth(defs, variables, main, code_defs, symbols, app_base,
                          hole_start=hole_start, hole_end=hole_end,
-                         kcode_cfas=kcode_cfas)
+                         kcode_cfas=kcode_cfas, data_blocks=data_blocks)
 
     # Re-assemble KCODE with real variable addresses
     if kcode_defs and variables:

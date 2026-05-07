@@ -160,6 +160,7 @@ BASIC's `LOADM` loads it and the kernel's `START` routine jumps to `APP_BASE`.
 | `VARIABLE NAME` | done |
 | `N CONSTANT NAME` | done |
 | `+FIELD`, `CFIELD:`, `FIELD:` (struct definers) | done |
+| `DATA[PY name … ]DATA` (compile-time Python data) | done |
 | `CHAR X` | done |
 | Integer literals (decimal, `0x` hex, `$` hex) | done |
 | `DO … LOOP` with `I` | done |
