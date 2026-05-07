@@ -159,6 +159,7 @@ BASIC's `LOADM` loads it and the kernel's `START` routine jumps to `APP_BASE`.
 | `CODE NAME ... ;CODE` (inline assembly) | done |
 | `VARIABLE NAME` | done |
 | `N CONSTANT NAME` | done |
+| `+FIELD`, `CFIELD:`, `FIELD:` (struct definers) | done |
 | `CHAR X` | done |
 | Integer literals (decimal, `0x` hex, `$` hex) | done |
 | `DO … LOOP` with `I` | done |

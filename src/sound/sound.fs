@@ -29,8 +29,7 @@ INCLUDE ../../forth/lib/sound.fs
   ." D  DOCK    H  HIT" CR CR
   ." BREAK    QUIT" CR ;
 
-\ Dispatch on the keystroke.  Nested IF/ELSE because fc.py
-\ miscompiles EXIT inside IF.
+\ Dispatch on the keystroke.
 \
 \ 1..4 : square waves (snd-tone) at increasing pitch
 \ 5    : descending sweep

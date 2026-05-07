@@ -671,6 +671,21 @@
           <td>Create a named constant. <em>name</em> compiles as <code>LIT n</code>.</td>
         </tr>
         <tr>
+          <td class="word-name">+FIELD</td>
+          <td><code>offset size +FIELD name</code></td>
+          <td>Define <em>name</em> as a struct-field offset. Acts like <code>CONSTANT</code> for <em>offset</em>, then leaves <em>offset+size</em> on the compile-time stack so successive <code>+FIELD</code>s build a record layout. Pair with <code>CONSTANT</code> to capture the total size.</td>
+        </tr>
+        <tr>
+          <td class="word-name">CFIELD:</td>
+          <td><code>offset CFIELD: name</code></td>
+          <td>Shortcut for <code>1 +FIELD</code> — defines a 1-byte (char) field.</td>
+        </tr>
+        <tr>
+          <td class="word-name">FIELD:</td>
+          <td><code>offset FIELD: name</code></td>
+          <td>Shortcut for <code>2 +FIELD</code> — defines a 2-byte (cell) field.<br>Example:<br><code>0<br>&nbsp;&nbsp;CFIELD: ship.x<br>&nbsp;&nbsp;CFIELD: ship.y<br>&nbsp;&nbsp;FIELD:&nbsp; ship.vx<br>&nbsp;&nbsp;FIELD:&nbsp; ship.vy<br>CONSTANT /ship</code></td>
+        </tr>
+        <tr>
           <td class="word-name">CHAR</td>
           <td><code>CHAR c</code></td>
           <td>Push the ASCII value of the next character. <code>CHAR A</code> compiles as <code>LIT 65</code>.</td>

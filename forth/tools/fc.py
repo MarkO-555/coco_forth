@@ -21,7 +21,6 @@ Supported Forth syntax:
     ( ... )         block comment
 
 Known limitations:
-    - EXIT inside IF/THEN may miscompile — avoid using EXIT inside IF blocks
     - BEGIN/WHILE/REPEAT is not supported — only BEGIN/AGAIN and BEGIN/UNTIL
     - CODE block comments must be ASCII only — Unicode (arrows, em dashes)
       will cause lwasm assembly errors
@@ -353,6 +352,38 @@ def parse(tokens):
             val = main_thread.pop()[1]
             definitions[const_name] = [('lit', val)]
 
+        elif tok.upper() in ('+FIELD', 'CFIELD:', 'FIELD:'):
+            # Struct-field definers — Forth-2012 style.
+            #   +FIELD  ( offset size "name" -- offset+size )
+            #   CFIELD: ( offset      "name" -- offset+1 )   [1-byte field]
+            #   FIELD:  ( offset      "name" -- offset+2 )   [2-byte (cell) field]
+            # The named word becomes a CONSTANT holding the field's offset.
+            # Use idiom:
+            #     0
+            #       CFIELD: ship.x
+            #       CFIELD: ship.y
+            #       FIELD:  ship.vx
+            #     CONSTANT /ship
+            if current_def is not None:
+                raise SyntaxError(f"{tok} inside a definition is not supported")
+            kind = tok.upper()
+            i += 1
+            field_name = tokens[i].lower()
+            if kind == '+FIELD':
+                if len(main_thread) < 2 or main_thread[-1][0] != 'lit' or main_thread[-2][0] != 'lit':
+                    raise SyntaxError(f"+FIELD {field_name!r} requires offset and size as two literals on the stack")
+                size = main_thread.pop()[1]
+                offset_item = main_thread[-1]
+                offset = offset_item[1]
+            else:
+                if not main_thread or main_thread[-1][0] != 'lit':
+                    raise SyntaxError(f"{tok} {field_name!r} requires an offset literal on the stack")
+                size = 1 if kind == 'CFIELD:' else 2
+                offset = main_thread[-1][1]
+            definitions[field_name] = [('lit', offset)]
+            # Replace the cursor on the (compile-time) stack with offset + size.
+            main_thread[-1] = ('lit', offset + size)
+
         elif tok == 'S"' or tok == 's"':
             i += 1
             raw = tokens[i]
@@ -441,6 +472,19 @@ def parse(tokens):
             _, label = if_stack.pop()
             target = current_items if current_def else main_thread
             target.append(('label', label))
+
+        elif tok.upper() == 'EXIT':
+            # EXIT pops the colon-call frame's saved IP from the return
+            # stack and returns.  If this EXIT is inside one or more
+            # active DO loops, the loop frames sit on R between the
+            # saved IP and the data we want to pop, so we need to UNLOOP
+            # once per active DO first.  Emit those automatically — this
+            # makes 'IF ... EXIT ... THEN' inside DO work as written
+            # without forcing the author to remember UNLOOP each time.
+            target = current_items if current_def else main_thread
+            for _ in do_stack:
+                target.append(('word', 'unloop'))
+            target.append(('word', 'exit'))
 
         else:
             # Integer literal or word reference

@@ -109,7 +109,7 @@ Do not access, search, or modify files outside these paths. If a task appears to
 ## Feedback
 - Issues are in issues.jsonl, not GitHub
 - Issue workflow rules — must exist before work, tested before resolved, resolved before push
-- EXIT inside IF may miscompile — avoid EXIT inside IF/THEN in fc.py Forth
+- EXIT inside DO/LOOP now auto-inserts UNLOOP cells (fc.py 2026-05-06) so the standard idiom works without manual UNLOOP. The old "avoid EXIT inside IF/THEN" gotcha is resolved.
 - Always track issues — create before starting, update during, never batch at end
 - Create issues before work — never retroactively; separate issues for distinct changes
 - Kill XRoar before relaunching — pkill xroar before make run
