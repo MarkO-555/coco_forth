@@ -1,102 +1,251 @@
 # Bare Naked Forth — Presentation Speaking Notes
 
-*10-minute talk*
+*~10-minute talk · 12 slides · `presentation.html`*
+
+Notes track the slide order. Each section is what to say while that
+slide is on screen. Timing in parentheses is a target, not a budget.
 
 ---
 
-## Opening (1 min)
+## Slide 1 — Title (15 sec)
 
-*Start with the hook — the central provocation.*
+Land on the title and let the image breathe for a beat. One sentence:
+
+> "Bare Naked Forth — a cross-compiled, token-threaded Forth for the
+> TRS-80 Color Computer. No OS, no disk, no clothes."
+
+Press right-arrow.
+
+---
+
+## Slide 2 — The Question (1 min)
+
+Open with the central provocation:
 
 > "What if Tandy had made better software decisions in 1982?"
 
-That question launched this project. The TRS-80 Color Computer had a genuinely elegant processor — the Motorola 6809. Two stack pointers. PC-relative addressing. Clean, orthogonal ISA. The hardware was never the problem. The cassette interface, the 32-column editor, the assembler that couldn't handle a project of any real size — those were. And they were all software.
+That question launched this project. The Color Computer had a genuinely
+elegant processor — the Motorola 6809. The hardware was never the
+problem. The cassette interface, the 32-column editor, the assembler
+that couldn't handle a real project — those were. And they were all
+software. We can't go back and change 1982, but we *can* build the
+software layer the machine deserved.
 
 ---
 
-## The Idea: Renovation, Not Emulation (1.5 min)
+## Slide 3 — The Hardware (1 min)
 
-Almost everyone who revisits vintage hardware does one of two things: emulation (run the old thing in a new context) or preservation (archive what existed). This project is neither.
+The 6809 is the hero of the talk. Quick tour:
 
-**Renovation** means the hardware runs authentically — you're still writing 6809 assembly, still constrained to 64K, still running on real hardware — but the software tooling layer gets replaced with something that was always *possible*, just never built.
+- Two 16-bit index registers (X and Y).
+- Two stack pointers — S and U. *(Foreshadow: this matters in two slides.)*
+- PC-relative addressing — position-independent code is natural.
+- Clean, orthogonal ISA, influenced by the PDP-11.
+- Writing 6809 assembly is genuinely *pleasant* — a rare thing for an
+  8-bit machine.
 
-The delivery mechanism: a ROM cartridge. Non-destructive. Pull it out, you have a stock CoCo. The original COCO_RENOVATION.md laid out the full vision: shell, filesystem driver, screen editor, assembler, linker, debug monitor.
-
----
-
-## The Pivot to Forth (1.5 min)
-
-As the project developed, a better answer emerged. Instead of reimplementing all those components from scratch in 6809 assembly — a years-long project — Forth offers a more elegant path.
-
-The 6809 has two hardware stack pointers, S and U. Forth is defined by two stacks: a return stack and a data stack. This is not a coincidence — it's a perfect fit. The 6809 was practically designed to run Forth.
-
-The architecture became **Indirect Threaded Code (ITC)**: a small kernel (~100 bytes of 6809 assembly) acts as the inner interpreter. Everything else — applications, programs, the tutorial programs — is cross-compiled Forth bytecode that the kernel executes natively.
-
-The name for this became **Bare Naked Forth**.
+The callout is the punchline: the 6809 was running multitasking
+operating systems by the early 80s. The hardware had headroom. **The
+tooling didn't keep up.**
 
 ---
 
-## What We Built: The Proof of Concept (2 min)
+## Slide 4 — Renovation, Not Emulation (1 min)
 
-Three components:
+Most people doing vintage computing do one of two things:
 
-**1. The kernel** (`forth/kernel/kernel.asm`) — 6809 assembly, cross-assembled with lwasm. Implements the ITC inner interpreter plus ~25 primitives: stack operations (DUP, DROP, SWAP, OVER), arithmetic (+, -, \*, /MOD), memory (@, !), I/O (EMIT, CR, KEY), control flow (DO, LOOP, 0BRANCH, BRANCH), comparisons (=, <>, <, >, 0=), and screen positioning (AT).
+- **Emulation** — run the old thing on new hardware.
+- **Preservation** — archive what existed.
 
-**2. The cross-compiler** (`forth/tools/fc.py`) — Python script that compiles Forth source to a DECB binary that loads directly on the CoCo. Handles colon definitions, variables, literals, DO/LOOP, IF/ELSE/THEN, BEGIN/AGAIN/UNTIL.
+This project is neither. **Renovation** keeps the hardware authentic —
+real 6809, real 64K, real cartridge slot — and replaces only the
+software layer. The delivery mechanism is a ROM cartridge: pull it
+out, you have a stock CoCo. Plug it in, you have a modern development
+environment.
 
-**3. Hello World** — the validation. Write a `.fs` file on a Mac, run `make`, launch XRoar, and "HELLO, WORLD!" appears on a CoCo 2 screen. That moment — working, real output on real (emulated) hardware — was the proof that the architecture holds.
-
-The workflow: `hello.fs → fc.py → threaded bytecode → CoCo 6809`. The 6809 never knows how the bytecode got there. It just executes.
-
----
-
-## The Tutorial: Getting Started with Color Forth (2 min)
-
-The second major deliverable is a complete beginner's book: **Getting Started with Color Forth** — 13 chapters, styled as a proper period-appropriate manual with a cover, illustrations, and chapter programs.
-
-The chapters take someone with no Forth experience from first principles to a complete interactive game:
-
-1. Meet Your Stack — the foundation
-2. Say Something — output
-3. Make Your Own Words — colon definitions
-4. The Stack Is Your Friend — stack manipulation
-5. Remember Things — variables, @, !
-6. Count and Loop — DO, LOOP
-7. Decisions — IF/ELSE/THEN
-8. Read the Keyboard — interactive programs
-9. Numbers on Screen — arithmetic display
-10. The Calculator — an RPN calculator (BEGIN…AGAIN)
-11. Anywhere on Screen — AT, screen layouts
-12. The Guessing Game — a complete game
-13. Getting It onto Your CoCo — real hardware deployment
-
-Each chapter has a working example program and DIY exercises. The tutorial is designed to run in XRoar now and on real hardware later.
+That non-destructive property is a design constraint, not an
+afterthought. Anything that hard-bricks a CoCo isn't a renovation,
+it's a transplant.
 
 ---
 
-## Future Potential (1.5 min)
+## Slide 5 — Why Forth? (1 min)
 
-The foundation is solid. Natural next directions:
+Two stacks. The 6809 has two hardware stack pointers (S and U). Forth
+is defined by two stacks (data and return). This is **not a
+coincidence** — the 6809 was practically designed to run Forth.
 
-**Near-term**: Serial loader (bit-banged via the CoCo's PIA) so bytecode can be sent over RS-232 from a modern machine. ROM cartridge image — kernel burned to flash, bootable from the pak slot. SD card integration via CoCoSDC.
+Concrete payoff: the entire kernel fits in roughly 4 KB of 6809
+assembly. Other CoCo Forths typically need an OS, a disk, or both.
+This one needs neither.
 
-**Hardware expansion**: An RP2350 co-processor — one core handling the 6809 bus, the other managing storage and services. The 6809 gets capabilities that didn't exist in 1987 without knowing anything changed.
-
-**Portability**: The same bytecode binary runs on CoCo 1, CoCo 2, CoCo 3 — hardware differences are the kernel's problem, not the application's. That's a real distribution format for new CoCo software.
-
-**The bigger picture**: The CoCo community has done extraordinary preservation work. What doesn't exist is anything genuinely new. This project is the U-turn — same hardware, different direction.
-
----
-
-## Closing (30 sec)
-
-The constraints here are features, not bugs. You feel the 64K. You feel the register pressure. The feedback is immediate. That's what makes this interesting — it's not about nostalgia, it's about what happens when you take a constrained, elegant system seriously.
+*(Slide says "~1KB" — that was the v1 number. The current kernel is
+~4KB after the math, RG6 graphics, beam-tracing, sound, and
+random-number primitives landed. Decide on the day whether to update
+the slide or just gloss over it as "small.")*
 
 ---
 
-## Things to Consider Adding
+## Slide 6 — The Architecture (1 min)
 
-- **A demo moment** — if you can show XRoar running the guessing game live, even briefly, that lands better than any description
-- **A slide of the kernel architecture** — the ITC threading diagram (X=IP, U=DSP, S=RSP) is clarifying for a technical audience
-- **The tutorial cover page** — it's a strong visual artifact showing what the project *looks* like, not just what it does
-- **The 6809 two-stack insight** — worth slowing down on; it's the "aha" moment that explains why Forth and this hardware are a natural pair
+The whole inner interpreter is two instructions:
+
+```
+LDY ,X++    ; fetch next CFA, advance IP
+JMP [,Y]    ; jump through CFA to machine code
+```
+
+That's Indirect Threaded Code. Three things make it work:
+
+- The kernel — ~4KB of 6809 assembly with **81 primitives**.
+- The CFA dispatch table — maps tokens to machine code.
+- The compiled thread — a sequence of 2-byte CFA addresses.
+
+Register convention: X is the instruction pointer, U is the data stack
+pointer, S is the return stack pointer. Y is scratch.
+
+*(Slide currently says 25 primitives — same caveat as kernel size.)*
+
+---
+
+## Slide 7 — The Workflow (45 sec)
+
+Walk left-to-right across the diagram:
+
+> Forth source → fc.py cross-compiler → DECB binary → CoCo 6809.
+
+The asymmetry is the point. **On your Mac**, you write Forth and run
+`make`. **On the CoCo**, the kernel executes the compiled thread; it
+never sees the source. This is what makes the workflow practical for
+modern development — full editor, version control, fast iteration —
+without giving up authenticity on the target.
+
+---
+
+## Slide 8 — What We Built (1 min)
+
+The proof of concept, plus everything that's grown around it:
+
+- **kernel.asm** — 6809 ITC executor, 81 primitives.
+- **fc.py** — Forth cross-compiler in Python: colon definitions,
+  variables, IF/ELSE/THEN, DO/LOOP, BEGIN/AGAIN/UNTIL, struct
+  definers (`+FIELD`), and compile-time data via `DATA[PY]`.
+- **The demos** — clock, kaleidoscope, tetris, rain, calculator,
+  sound demo, and others. The clock alone reads time over FujiNet
+  and renders an analog face with a smooth-sweeping second hand.
+- **Hello, World** — the original validation. Real output on
+  (emulated) real hardware. That moment was the proof the
+  architecture holds.
+
+The terminal box on the slide shows the full workflow in three lines.
+
+*(Slide stat reads "25 primitives, ~1K bytes" — see slide 5/6
+caveats.)*
+
+---
+
+## Slide 9 — The Tutorial (1 min)
+
+Second major deliverable: **Getting Started with Bare Naked Forth** —
+a 13-chapter beginner's book, styled as a period-appropriate manual.
+Cover, illustrations, chapter programs.
+
+The chapters take someone with no Forth experience from "what is a
+stack" to a complete interactive game. Each chapter has a working
+example program and DIY exercises. Highlight a few:
+
+- **Ch 1 Meet Your Stack** — the foundation.
+- **Ch 6 Count and Loop** — DO, LOOP, I.
+- **Ch 10 The Calculator** — a real RPN calculator.
+- **Ch 12 The Guessing Game** — a complete game.
+- **Ch 13 Getting It onto Your CoCo** — real hardware deployment.
+
+If you can show the guessing game running live in XRoar at this
+point, do it. Live demo lands harder than any description.
+
+---
+
+## Slide 10 — vs. Every Other CoCo Forth (45 sec)
+
+This is where the project's *position* gets sharp. Walk the table
+top-to-bottom:
+
+- **NitrOS-9 Forth** — needs OS-9, needs a disk, hours to set up,
+  large kernel.
+- **Typical CoCo Forth** — usually needs both, minutes-to-hours setup,
+  medium kernel.
+- **Bare Naked Forth** — no OS, no disk, seconds to "Hello, World",
+  ~4KB kernel.
+
+The callout is the elevator pitch:
+
+> "Write Forth on your Mac. Run it on the CoCo. That's the whole
+> workflow."
+
+---
+
+## Slide 11 — Where This Goes (1 min)
+
+The roadmap, near-term to longer-term:
+
+- **Serial loader** — bit-banged via PIA. Send bytecode over RS-232
+  from a modern machine.
+- **ROM cartridge image** — kernel burned to flash, plug-and-play.
+- **SD card** — store and load programs via CoCoSDC.
+- **RP2350 co-processor** — one core handling the 6809 bus, the
+  other managing storage and services. The 6809 gets capabilities
+  that didn't exist in 1987 without knowing anything changed. *(A
+  prototype board called "Centipede" — designed by Henry Strickland
+  — implements the hardware side and is en route.)*
+- **CoCo 1 / 2 / 3** — same bytecode runs everywhere. Hardware
+  differences are the kernel's problem, not the application's.
+
+The bigger picture: the CoCo community has done extraordinary
+preservation work. What doesn't exist is anything genuinely new. This
+is the U-turn — same hardware, different direction.
+
+---
+
+## Slide 12 — The Point (45 sec)
+
+Land on the closing thought:
+
+> "Constraints are features."
+
+You feel the 64K. You feel the register pressure. The feedback is
+immediate and embodied. The 6809 was an elegant processor let down by
+its ecosystem. **Bare Naked Forth** is the ecosystem it deserved.
+
+End on `github.com/ugufru/coco`. Pause. Take questions.
+
+---
+
+## Numbers footnote (for the speaker)
+
+The deck was authored when the kernel was smaller. Current discrete
+numbers, in case anyone asks:
+
+- **81 primitives** (84 CFA entries: 81 code + 3 inline data words —
+  `font-data`, `sprite-data`, `sin-data`).
+- **~4 KB kernel** (3977 bytes ROM mode, 4029 bytes all-RAM mode).
+- **About a dozen demos** in `src/`.
+- **216 issues** tracked in `issues.jsonl`, ~165 done.
+
+If the slides still say "25" / "~1K", that's a v1 number — note for
+yourself but don't correct on the fly unless someone asks.
+
+---
+
+## Things to consider adding
+
+- **A live demo moment** — XRoar running the guessing game (or
+  tetris, or the clock) for 20 seconds lands better than any
+  description.
+- **The two-stack insight** (slide 5) is the "aha" moment for a
+  technical audience — slow down on it.
+- **Recent dev-experience wins** — the spacewarp author's feedback
+  validates that real game work is happening on this Forth, not just
+  toy demos. Worth a sentence at slide 11.
+- **The cartridge image** — if you have the rendered cover for
+  *Getting Started with Bare Naked Forth*, that's a strong visual
+  artifact for slide 9.
