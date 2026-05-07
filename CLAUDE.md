@@ -2,6 +2,62 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Resources — Consult Before Web Search
+
+This project carries its own canonical references. **Read the table below
+before answering any non-trivial question** — only fall back to WebSearch
+when the answer genuinely isn't in-tree (third-party tools, modern Python /
+git, current events, anything created outside this repo). For a question
+inside the project's scope (CoCo hardware, the kernel, the compiler, the
+demos, the project's history or direction), the in-tree resource is the
+authority — the web is at best an echo of it and at worst contradicts it.
+
+### Hardware & low-level
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| 6809 / CoCo hardware (PIA, SAM, VDG, audio, IRQ, memory map)     | `coco_technical_reference.pdf` (root)                 |
+| VDG modes, MUX bits, semigraphics layouts, color sets            | `docs/vdg-modes.md`                                   |
+| Memory map, build profiles (ROM mode / all-RAM mode)             | `forth/kernel/README.md` § Memory map                 |
+| Specific kernel internal (DOCOL, NEXT, VAR_LP, IRQ masking, …)   | `forth/kernel/kernel.asm` (heavily commented source)  |
+
+### Forth language & toolchain
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Kernel primitive (DUP, +, EMIT, KEY, I, J, …) — what / how       | `docs/reference.html` § Kernel Primitives             |
+| Library word (snd-tone, init-sin, beam-trace, rg-line, …)        | `docs/reference.html` § (matching .fs file)           |
+| fc.py syntax / directives (CONSTANT, +FIELD, DATA[PY], CODE)     | `forth/tools/README.md`, `docs/reference.html` § Compiler |
+| Kernel architecture, ITC threading model, register conventions   | `forth/kernel/README.md`                              |
+
+### Project context
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Project intent, design philosophy, vision                        | `COCO_RENOVATION.md`                                  |
+| Project plan, phasing, what's next                               | `ROADMAP.md`                                          |
+| Issue / bug / feature status                                     | `issues.jsonl` (use the `/issues` skill)              |
+| Past user / collaborator feedback                                | `FEEDBACK.md`, `docs/SOUND_ENGINE_PROPOSAL.md`        |
+
+### Community & history (CoCo legends)
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| CoCo person / programmer / community member                      | `legends/whos-who.md`                                 |
+| CoCo company / publisher / vendor                                | `legends/companies.md`                                |
+| CoCo book / Rainbow article / external reference                 | `legends/references.md`                               |
+
+### Tutorial & examples
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Tutorial chapter (Forth concepts, walkthroughs, idioms)          | `docs/0X-*.html`, index at `docs/tutorial.html`       |
+| Existing demo's source / structure (game state, sprites, etc.)   | `src/<demo>/<demo>.fs` and `src/<demo>/README.md`     |
+| Working CODE / KCODE example to copy from                        | `forth/lib/*.fs` and `src/<demo>/<demo>.fs` CODE blocks |
+
+The same table lives standalone at `RESOURCES.md` for human readers and
+quick grep — keep them in sync when adding new resources.
+
 ## IMPORTANT: No Memory Files
 Do NOT use the `~/.claude/projects/*/memory/` system. Do not create MEMORY.md or any files in the memory directory. All persistent knowledge belongs in THIS file (CLAUDE.md) and nowhere else.
 
@@ -135,7 +191,7 @@ Primary doc: `COCO_RENOVATION.md`. Tech reference: `coco_technical_reference.pdf
 
 ## Current State (2026-04-28)
 Tutorial series complete: Getting Started ch1–13, all demos, calculator.
-Kernel: 80+ primitives, parameterized for ROM mode (default) and all-RAM mode.
+Kernel: 81 primitives + 3 inline data words (font-data, sprite-data, sin-data), parameterized for ROM mode (default) and all-RAM mode.
 ROM-mode kernel ORGs at $2000, no bootstrap, BREAK→BASIC OK via exit-basic.
 All 10 demos run in ROM mode on 32K (clock+fujinet-time need HDB-DOS-CC cart).
 fc.py: inline_constants(), FVAR_* EQU export, auto-detect ROM vs all-RAM,

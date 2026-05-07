@@ -1,0 +1,67 @@
+# Project Resources
+
+A task-oriented index of every authoritative reference in the project.
+For any question that lies inside the project's scope — CoCo hardware,
+the kernel, the compiler, the demos, the project's history or direction
+— the in-tree resource is the authority. **Read the matching row below
+before reaching for the web.** External searches are an echo of these
+documents at best and contradict them at worst.
+
+This file mirrors the same table that opens `CLAUDE.md`. The two are
+kept in sync; either is a valid entry point.
+
+## Hardware & low-level
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| 6809 / CoCo hardware (PIA, SAM, VDG, audio, IRQ, memory map)     | `coco_technical_reference.pdf` (root)                 |
+| VDG modes, MUX bits, semigraphics layouts, color sets            | `docs/vdg-modes.md`                                   |
+| Memory map, build profiles (ROM mode / all-RAM mode)             | `forth/kernel/README.md` § Memory map                 |
+| Specific kernel internal (DOCOL, NEXT, VAR_LP, IRQ masking, …)   | `forth/kernel/kernel.asm` (heavily commented source)  |
+
+## Forth language & toolchain
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Kernel primitive (DUP, +, EMIT, KEY, I, J, …) — what / how       | `docs/reference.html` § Kernel Primitives             |
+| Library word (snd-tone, init-sin, beam-trace, rg-line, …)        | `docs/reference.html` § (matching .fs file)           |
+| fc.py syntax / directives (CONSTANT, +FIELD, DATA[PY], CODE)     | `forth/tools/README.md`, `docs/reference.html` § Compiler |
+| Kernel architecture, ITC threading model, register conventions   | `forth/kernel/README.md`                              |
+
+## Project context
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Project intent, design philosophy, vision                        | `COCO_RENOVATION.md`                                  |
+| Project plan, phasing, what's next                               | `ROADMAP.md`                                          |
+| Issue / bug / feature status                                     | `issues.jsonl` (use the `/issues` skill)              |
+| Past user / collaborator feedback                                | `FEEDBACK.md`, `docs/SOUND_ENGINE_PROPOSAL.md`        |
+
+## Community & history (CoCo legends)
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| CoCo person / programmer / community member                      | `legends/whos-who.md`                                 |
+| CoCo company / publisher / vendor                                | `legends/companies.md`                                |
+| CoCo book / Rainbow article / external reference                 | `legends/references.md`                               |
+
+## Tutorial & examples
+
+| Question / Task                                                  | Resource                                              |
+|------------------------------------------------------------------|-------------------------------------------------------|
+| Tutorial chapter (Forth concepts, walkthroughs, idioms)          | `docs/0X-*.html`, index at `docs/tutorial.html`       |
+| Existing demo's source / structure (game state, sprites, etc.)   | `src/<demo>/<demo>.fs` and `src/<demo>/README.md`     |
+| Working CODE / KCODE example to copy from                        | `forth/lib/*.fs` and `src/<demo>/<demo>.fs` CODE blocks |
+
+## Maintenance
+
+When you add a new authoritative reference (a doc, a major comment block in
+source, a markdown file at root, a new tutorial chapter, etc.):
+
+1. Add a row here in the matching section.
+2. Add the same row to the table at the top of `CLAUDE.md`.
+3. If a row is no longer accurate (file moved, deprecated, replaced),
+   update both copies in the same commit.
+
+The two tables are identical by design. If they ever drift, treat
+`RESOURCES.md` as canonical and rebase `CLAUDE.md` against it.
