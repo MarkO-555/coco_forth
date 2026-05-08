@@ -15,7 +15,7 @@
 
 \ ── Shared libraries ─────────────────────────────────────────────────────────
 
-INCLUDE ../../forth/lib/print.fs
+INCLUDE ../../lib/print.fs
 
 \ ── Video RAM primitives ──────────────────────────────────────────────────────
 

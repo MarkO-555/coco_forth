@@ -52,12 +52,12 @@ Buttons are single inverse-video characters (green on black). Pressing a key bri
 
 ```sh
 # 1. Build the kernel
-cd forth/kernel && make
+cd kernel && make
 
 # 2. Compile the calculator
-python3 forth/tools/fc.py src/calculator/calc.fs \
-    --kernel forth/kernel/build/kernel.map \
-    --kernel-bin forth/kernel/build/kernel.bin \
+python3 tools/fc.py src/calculator/calc.fs \
+    --kernel kernel/build/kernel.map \
+    --kernel-bin kernel/build/kernel.bin \
     --output src/calculator/calc.bin
 
 # 3. Run in XRoar

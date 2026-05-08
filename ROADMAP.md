@@ -65,7 +65,7 @@ Goal: pad out the standard library so apps don't reinvent primitives.
 - 33 — Circle drawing (paired with `clock` work)
 - 34 — Flood fill (PAINT)
 - 35 — Turtle graphics (DRAW)
-- 37 — PLAY music command (build on `forth/lib/sound.fs`)
+- 37 — PLAY music command (build on `lib/sound.fs`)
 
 ---
 
@@ -100,7 +100,7 @@ suggestion.
 - 24 — Serial terminal (real I/O, pairs with FujiNet story)
 - 19 — Maze generator + navigator (algorithmic)
 - 14 — Drawing program (interactive, joystick + paint)
-- 42 — Electronic piano (uses `forth/lib/sound.fs`)
+- 42 — Electronic piano (uses `lib/sound.fs`)
 
 **Defer or drop:**
 - 18 — Clock/stopwatch (superseded by `clock` demo)

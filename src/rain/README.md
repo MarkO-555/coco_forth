@@ -65,7 +65,7 @@ Computation runs at SAM double speed (~1.78 MHz), dropping back to normal speed 
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile and run
 cd src/rain && make run
@@ -73,5 +73,5 @@ cd src/rain && make run
 
 ## Shared Libraries
 
-- `forth/lib/rng.fs` — 16-bit LCG random number generator
-- `forth/lib/screen.fs` — vsync synchronization, screen clearing
+- `lib/rng.fs` — 16-bit LCG random number generator
+- `lib/screen.fs` — vsync synchronization, screen clearing

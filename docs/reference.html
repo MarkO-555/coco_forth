@@ -498,7 +498,7 @@
       <!-- Graphics -->
       <div class="group-label">Graphics</div>
       <p>RG6 (256&times;192 NTSC artifact-color) pixel and sprite primitives. The
-      library <code>forth/lib/rg-pixel.fs</code> sets up tables and VRAM; these
+      library <code>lib/rg-pixel.fs</code> sets up tables and VRAM; these
       words then run at native 6809 speed in the kernel.</p>
       <table class="ref-table">
         <tr>
@@ -818,7 +818,7 @@
       <code>VARIABLE</code> and reaches them from assembly as
       <code>FVAR_</code>&hellip;; and it reaches shared kernel state as
       <code>KVAR-</code>&hellip;. Example pattern from
-      <code>forth/lib/rg-pixel.fs</code>, where the app caches the kernel
+      <code>lib/rg-pixel.fs</code>, where the app caches the kernel
       VRAM pointer:</p>
 
       <pre><code>$0600 DUP rv !  KVAR-RGVRAM !   \ set local and kernel copies
@@ -833,7 +833,7 @@ CODE fast-plot   ( x y -- )
       <h2>Library Words</h2>
       <!-- ================================================================== -->
 
-      <p>Library words are written in Forth and live in <code>forth/lib/</code>.
+      <p>Library words are written in Forth and live in <code>lib/</code>.
       Load them with <code>INCLUDE</code> at the top of your source file.
       Some libraries depend on others &mdash; the required include order is
       shown below.</p>

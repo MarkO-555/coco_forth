@@ -17,7 +17,7 @@
 \ Build:   make
 \ Load:    LOADM"TYPEWRTR":EXEC
 
-INCLUDE ../../forth/lib/bye.fs
+INCLUDE ../../lib/bye.fs
 
 \ ── Variables ────────────────────────────────────────────────────────────────
 

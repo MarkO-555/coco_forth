@@ -4,7 +4,7 @@
 
 ## Why this exists
 
-Today's `forth/lib/sound.fs` is **synchronous**: every word in the
+Today's `lib/sound.fs` is **synchronous**: every word in the
 library (`snd-tone`, `snd-saw`, `snd-sin`, `snd-noise`, the
 convenience effects) blocks the caller until the sound finishes.
 That works fine for short interjections (a UI beep, a hit-tick, a
@@ -187,7 +187,7 @@ budget of any action game that has time to draw at all.
 2. **Kernel-side prep.** No kernel changes needed for option A — all
    state lives in app-side `VARIABLE`s.  (Future option C work would
    want a kernel-side IRQ handler.)
-3. **Library `forth/lib/sound-async.fs`.** New file — keeps the
+3. **Library `lib/sound-async.fs`.** New file — keeps the
    existing synchronous lib untouched while we iterate.  Ports the
    PIA setup, defines `snd-play`, `snd-tick`, plus a small set of
    fire-and-forget convenience words mirroring today's `snd-*`.
@@ -211,5 +211,5 @@ budget of any action game that has time to draw at all.
   is straightforward — that's what #37 (PLAY music command) would
   be built on.
 
-— *Filed alongside `forth/lib/sound.fs` (synchronous library) and
+— *Filed alongside `lib/sound.fs` (synchronous library) and
 `src/sound/` (synchronous demo).*

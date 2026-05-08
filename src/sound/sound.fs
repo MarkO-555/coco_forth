@@ -4,11 +4,11 @@
 \ BASIC.  Works in both ROM-mode and all-RAM kernel builds — see
 \ SOUND.md for the historical context.
 
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/bye.fs
-INCLUDE ../../forth/lib/datawrite.fs
-INCLUDE ../../forth/lib/trig.fs
-INCLUDE ../../forth/lib/sound.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/bye.fs
+INCLUDE ../../lib/datawrite.fs
+INCLUDE ../../lib/trig.fs
+INCLUDE ../../lib/sound.fs
 
 \ Smooth ascending sweep: low frequency → high frequency.
 \ Pitch parameter (= inter-toggle delay) sweeps from 200 down to 20

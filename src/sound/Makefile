@@ -1,4 +1,4 @@
 NAME = sound
-EXTRA_DEPS = ../../forth/lib/sound.fs ../../forth/lib/bye.fs
+EXTRA_DEPS = ../../lib/sound.fs ../../lib/bye.fs
 
 include ../../make/demo.mk

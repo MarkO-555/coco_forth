@@ -6,13 +6,13 @@
 \ Build:   make
 \ Load:    LOADM"RG-TEST":EXEC
 
-INCLUDE ../../forth/lib/vdg.fs
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/bye.fs
-INCLUDE ../../forth/lib/rg-pixel.fs
-INCLUDE ../../forth/lib/datawrite.fs
-INCLUDE ../../forth/lib/sprite.fs
-INCLUDE ../../forth/lib/trig.fs
+INCLUDE ../../lib/vdg.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/bye.fs
+INCLUDE ../../lib/rg-pixel.fs
+INCLUDE ../../lib/datawrite.fs
+INCLUDE ../../lib/sprite.fs
+INCLUDE ../../lib/trig.fs
 
 VARIABLE row
 VARIABLE bc

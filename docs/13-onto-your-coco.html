@@ -182,12 +182,12 @@
 <span class="prompt">$</span> edit getting-started/examples/12/guess.fs
 
 <span class="comment"># 2. Build the kernel (only needed if kernel.asm changed)</span>
-<span class="prompt">$</span> cd forth/kernel &amp;&amp; make
+<span class="prompt">$</span> cd kernel &amp;&amp; make
 
 <span class="comment"># 3. Cross-compile your Forth source</span>
-<span class="prompt">$</span> python3 forth/tools/fc.py guess.fs \
-        --kernel forth/kernel/build/kernel.map \
-        --kernel-bin forth/kernel/build/kernel.bin \
+<span class="prompt">$</span> python3 tools/fc.py guess.fs \
+        --kernel kernel/build/kernel.map \
+        --kernel-bin kernel/build/kernel.bin \
         --output guess.bin
 
 <span class="comment"># 4a. Run in XRoar</span>

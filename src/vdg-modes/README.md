@@ -71,19 +71,19 @@ Offset  Size  Field
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile and run
 cd src/vdg-modes
 mkdir -p build
-python3 ../../forth/tools/fc.py vdg-modes.fs \
-    --kernel ../../forth/kernel/build/kernel.map \
-    --kernel-bin ../../forth/kernel/build/kernel.bin \
+python3 ../../tools/fc.py vdg-modes.fs \
+    --kernel ../../kernel/build/kernel.map \
+    --kernel-bin ../../kernel/build/kernel.bin \
     --output build/vdg-modes.bin
 xroar -machine coco2bus -run build/vdg-modes.bin
 ```
 
 ## Shared Libraries
 
-- `forth/lib/vdg.fs` — VDG/SAM mode switching (set-sam-v, set-sam-f, set-pia, reset-text)
-- `forth/lib/font5x7.fs` — 5x7 bitmap font (37 glyphs: space, A-Z, 0-9)
+- `lib/vdg.fs` — VDG/SAM mode switching (set-sam-v, set-sam-f, set-pia, reset-text)
+- `lib/font5x7.fs` — 5x7 bitmap font (37 glyphs: space, A-Z, 0-9)

@@ -28,7 +28,7 @@ Uses a 16-bit LCG (`seed × 25173 + 13849`, full period 65536) with high-byte ex
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile the kaleidoscope
 cd src/kaleidoscope && make

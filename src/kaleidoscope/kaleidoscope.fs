@@ -18,9 +18,9 @@
 
 \ ── Shared libraries ──────────────────────────────────────────────────
 
-INCLUDE ../../forth/lib/rng.fs
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/bye.fs
+INCLUDE ../../lib/rng.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/bye.fs
 
 \ ── Semigraphics-4 pixel operations ───────────────────────────────────
 

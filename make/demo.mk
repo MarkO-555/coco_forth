@@ -7,8 +7,8 @@
 #   XROAR_EXTRA  (optional)  extra xroar args, defaults to -kbd-translate
 # then includes this file.
 
-KERNEL_DIR   = ../../forth/kernel
-FC           = python3 ../../forth/tools/fc.py
+KERNEL_DIR   = ../../kernel
+FC           = python3 ../../tools/fc.py
 XROAR_ROMS   = -bas ~/.xroar/roms/bas12.rom -extbas ~/.xroar/roms/extbas11.rom
 
 # KERNEL_VARIANT selects which kernel build to link against:

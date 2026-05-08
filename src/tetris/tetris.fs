@@ -18,10 +18,10 @@
 
 \ ── Shared library ──────────────────────────────────────────────────────────
 
-INCLUDE ../../forth/lib/rng.fs
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/print.fs
-INCLUDE ../../forth/lib/datawrite.fs
+INCLUDE ../../lib/rng.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/print.fs
+INCLUDE ../../lib/datawrite.fs
 
 \ ── Normal-video text output ────────────────────────────────────────────────
 \ EMIT writes inverse ($40|char) = dark on green.  vemit writes normal

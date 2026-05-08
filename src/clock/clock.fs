@@ -13,14 +13,14 @@
 \ a 60Hz vsync counter.  Resync every 5 minutes to absorb the 59.94Hz
 \ drift.
 
-INCLUDE ../../forth/lib/vdg.fs
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/rg-pixel.fs
-INCLUDE ../../forth/lib/datawrite.fs
-INCLUDE ../../forth/lib/font-art.fs
-INCLUDE ../../forth/lib/trig.fs
-INCLUDE ../../forth/lib/fujinet.fs
-INCLUDE ../../forth/lib/beam.fs
+INCLUDE ../../lib/vdg.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/rg-pixel.fs
+INCLUDE ../../lib/datawrite.fs
+INCLUDE ../../lib/font-art.fs
+INCLUDE ../../lib/trig.fs
+INCLUDE ../../lib/fujinet.fs
+INCLUDE ../../lib/beam.fs
 
 
 \ ── Forth helpers ────────────────────────────────────────────────────

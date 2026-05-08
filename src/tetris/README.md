@@ -116,7 +116,7 @@ The title screen counts vsync frames in a tight loop until the player presses a 
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile and run Tetris
 cd src/tetris && make run
@@ -124,7 +124,7 @@ cd src/tetris && make run
 
 ## Shared Libraries
 
-This demo uses shared Forth libraries from `forth/lib/`:
+This demo uses shared Forth libraries from `lib/`:
 
 - `rng.fs` — 16-bit LCG random number generator
 - `screen.fs` — vsync synchronization, screen clearing

@@ -13,13 +13,13 @@
 \ Build:   make           (no Makefile yet — see issue #442)
 \ Load:    LOADM"VDGMODES":EXEC
 
-INCLUDE ../../forth/lib/vdg.fs
-INCLUDE ../../forth/lib/font5x7.fs
-INCLUDE ../../forth/lib/datawrite.fs
-INCLUDE ../../forth/lib/rg-text.fs
-INCLUDE ../../forth/lib/cg-text.fs
-INCLUDE ../../forth/lib/sg6-text.fs
-INCLUDE ../../forth/lib/bye.fs
+INCLUDE ../../lib/vdg.fs
+INCLUDE ../../lib/font5x7.fs
+INCLUDE ../../lib/datawrite.fs
+INCLUDE ../../lib/rg-text.fs
+INCLUDE ../../lib/cg-text.fs
+INCLUDE ../../lib/sg6-text.fs
+INCLUDE ../../lib/bye.fs
 
 \ -- Constants -----------------------------------------------------------
 

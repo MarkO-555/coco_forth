@@ -7,8 +7,8 @@
 \ Build:   make
 \ Load:    LOADM"FNTIME":EXEC
 
-INCLUDE ../../forth/lib/screen.fs
-INCLUDE ../../forth/lib/fujinet.fs
+INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/fujinet.fs
 
 
 \ ── Inline 6-byte buffer that holds the FujiNet time response ────

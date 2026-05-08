@@ -17,7 +17,7 @@ include ../../make/demo.mk
 EOF
 
 cat > src/myapp/myapp.fs <<'EOF'
-INCLUDE ../../forth/lib/bye.fs
+INCLUDE ../../lib/bye.fs
 
 : main
   CHAR H EMIT  CHAR I EMIT  CR
@@ -105,7 +105,7 @@ These go above `include ../../make/demo.mk`:
 Example — RG6 demo with NTSC artifact colour:
 ```make
 NAME        = mydemo
-EXTRA_DEPS  = ../../forth/lib/rg-pixel.fs
+EXTRA_DEPS  = ../../lib/rg-pixel.fs
 XROAR_EXTRA = -tv-input cmp-br -kbd-translate
 
 include ../../make/demo.mk
@@ -138,7 +138,7 @@ Common scenarios:
 
 ### Level 3 — kernel build overrides (lwasm `-D` flags)
 
-These rebuild the kernel itself. Edit `forth/kernel/Makefile` or invoke
+These rebuild the kernel itself. Edit `kernel/Makefile` or invoke
 lwasm directly. Almost no project needs this — only relevant when you're
 targeting an unusual machine (16K), porting to a different memory map, or
 building a custom kernel variant.
@@ -156,7 +156,7 @@ building a custom kernel variant.
 
 Example — build a 16K-target ROM kernel:
 ```sh
-cd forth/kernel
+cd kernel
 lwasm --format=decb --output=build/kernel-16k.bin --map=build/kernel-16k.map \
       -DRSP_INIT=$4000 -DDSP_INIT=$3E00 \
       kernel.asm
@@ -181,7 +181,7 @@ profile without changes.
 
 Example — using them:
 ```forth
-INCLUDE ../../forth/lib/rg-pixel.fs
+INCLUDE ../../lib/rg-pixel.fs
 
 : my-init
   rg-init                         \ uses vram-base internally
@@ -201,7 +201,7 @@ program doesn't.
 Just `NAME = foo`. ROM mode is the default. Done.
 
 ### "I want RG6 graphics"
-Add `INCLUDE ../../forth/lib/rg-pixel.fs`. Call `rg-init`. The kernel
+Add `INCLUDE ../../lib/rg-pixel.fs`. Call `rg-init`. The kernel
 reserves `$0600–$1DFF` for VRAM in both modes; `rg-init` configures the
 VDG to display from `vram-base`. Set `XROAR_EXTRA = -tv-input cmp-br` for
 NTSC artifact colour.
@@ -216,7 +216,7 @@ CODE call-dskcon
 ```
 
 ### "I need a clean exit to BASIC"
-ROM mode + `INCLUDE ../../forth/lib/bye.fs` + call `exit-basic` — JMPs to
+ROM mode + `INCLUDE ../../lib/bye.fs` + call `exit-basic` — JMPs to
 BASIC's cold start at `$A027`. Doesn't work in all-RAM mode (ROMs paged out).
 
 ### "My app code is over ~10K"

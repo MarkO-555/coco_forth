@@ -39,7 +39,7 @@ Because `snd-tone` does its own explicit PIA setup, the demo runs identically un
 
 The CoCo runs at ~0.89 MHz, so 1 ms ≈ 890 cycles.
 
-### Library primitives (in `forth/lib/sound.fs`)
+### Library primitives (in `lib/sound.fs`)
 
 | Word      | Bytes | Fixed cycles | Per-iteration             |
 |-----------|------:|-------------:|---------------------------|
@@ -83,7 +83,7 @@ Library footprint total: ~440 bytes (CODE words 249 + Forth wrappers ~190).
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile and run the sound demo
 cd src/sound && make run

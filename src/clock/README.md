@@ -78,7 +78,7 @@ FujiNet SD card. Mount it on a real CoCo and `LOADM"CLOCK":EXEC`.
 - [`clock.fs`](clock.fs) — main program (~870 lines)
 - [`FRAME_BUDGET.md`](FRAME_BUDGET.md) — full cycle accounting
 - [`frame_budget_chart.html`](frame_budget_chart.html) — interactive chart
-- [`../../forth/lib/fujinet.fs`](../../forth/lib/fujinet.fs) — FujiNet RTC primitives
+- [`../../lib/fujinet.fs`](../../lib/fujinet.fs) — FujiNet RTC primitives
 
 The clock uses every part of the Forth kernel: ITC primitives, CODE
 words (12 of them, including the unrolled SAM-F page flip and the

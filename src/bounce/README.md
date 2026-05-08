@@ -49,7 +49,7 @@ make          # build bounce.bin
 make run      # build and launch in XRoar
 ```
 
-Requires the kernel to be built first (`make -C ../../forth/kernel`).
+Requires the kernel to be built first (`make -C ../../kernel`).
 
 ## CoCo Keyboard Matrix Reference
 

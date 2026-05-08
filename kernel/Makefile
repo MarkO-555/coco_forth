@@ -1,6 +1,6 @@
 BUILD  = build
 TOOLS  = ../tools
-HELLO  = ../hello
+HELLO  = ../src/hello
 
 .PHONY: all clean run allram
 

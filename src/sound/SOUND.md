@@ -140,6 +140,6 @@ Tried calling `JSR SND_PLAY` from the kernel START routine (at $E000). **Crashed
 
 ## Files
 
-- `forth/lib/sound.fs` — Sound library with CODE words (snd-tone, snd-sweep, snd-noise). Works conceptually but blocked by all-RAM audio issue.
+- `lib/sound.fs` — Sound library with CODE words (snd-tone, snd-sweep, snd-noise). Works conceptually but blocked by all-RAM audio issue.
 - `src/sound/sound.fs` — Interactive demo program (keys 1-6 for different effects).
 - `src/sound/Makefile` — Build and run the demo.

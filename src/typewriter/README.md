@@ -39,7 +39,7 @@ The cursor implementation shows how to do read-modify-restore on video RAM: save
 
 ```sh
 # Build the kernel (if not already built)
-cd forth/kernel && make
+cd kernel && make
 
 # Compile and run the typewriter
 cd src/typewriter && make run

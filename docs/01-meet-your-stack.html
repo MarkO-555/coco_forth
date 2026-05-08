@@ -225,11 +225,11 @@
           </p>
           <p>
             We've wrapped all three steps into a single script:
-            <code>forth/run.sh</code>. Here's the full script so you can
+            <code>run.sh</code>. Here's the full script so you can
             see exactly what it does — nothing is hidden:
           </p>
 <pre class="shell"><span class="comment"># Build kernel if needed, compile .fs → .bin, launch XRoar</span>
-<span class="comment"># Full source: forth/run.sh</span>
+<span class="comment"># Full source: run.sh</span>
 
 if [ ! -f kernel/build/kernel.map ]; then
     (cd kernel &amp;&amp; make)          <span class="comment"># assemble the kernel (once)</span>
@@ -247,7 +247,7 @@ xroar -machine coco2bus \
           <p style="margin-bottom: 0;">
             For every example in this book, you'll use it like this:
           </p>
-<pre class="shell">./forth/run.sh hello.fs</pre>
+<pre class="shell">./run.sh hello.fs</pre>
         </div>
       </div>
 

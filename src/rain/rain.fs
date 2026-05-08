@@ -12,8 +12,8 @@
 
 \ ── Shared libraries ──────────────────────────────────────────────
 
-INCLUDE ../../forth/lib/rng.fs
-INCLUDE ../../forth/lib/screen.fs
+INCLUDE ../../lib/rng.fs
+INCLUDE ../../lib/screen.fs
 
 \ ── Normal-video text output ──────────────────────────────────────
 \ vemit: green-on-black text (normal video).  EMIT writes inverse.
