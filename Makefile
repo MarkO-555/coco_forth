@@ -7,22 +7,29 @@
 #   make dsks         build both DSKs
 #   make clean        remove all build artifacts
 
-DEMOS        = bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time
-KERNEL       = forth/kernel
+DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time
+KERNEL       = kernel
 DSK          = build/demos.dsk
 TUTORIAL_DSK = build/tutorial.dsk
 FNTIME_DSK   = build/fntime.dsk
 CLOCK_DSK    = build/clock.dsk
 
-.PHONY: all kernel demos dsk tutorial-dsk dsks fntime-dsk clock-dsk clean
+.PHONY: all kernel demos dsk tutorial-dsk dsks fntime-dsk clock-dsk lib-readme clean
 
-all: demos
+all: lib-readme demos
 
 kernel:
 	$(MAKE) -C $(KERNEL)
 
 demos: kernel
 	@for d in $(DEMOS); do $(MAKE) -C src/$$d || exit 1; done
+
+# Regenerate lib/README.md from lib/*.fs source headers and definitions.
+# Auto-runs as part of `make all`. Run by hand with `make lib-readme`.
+lib-readme: lib/README.md
+
+lib/README.md: tools/gen-lib-readme.py $(wildcard lib/*.fs)
+	@python3 tools/gen-lib-readme.py
 
 # Create a DECB disk image with all demos.
 # Requires Toolshed's 'decb' command.
