@@ -4,10 +4,13 @@
 |--------|------|
 | [`fc.py`](#fcpy--forth-cross-compiler) | Forth cross-compiler (`.fs` source → DECB binary) — the main toolchain piece |
 | [`gen-lib-readme.py`](#gen-lib-readmepy--lib-word-index-generator) | Regenerates `lib/README.md` from `lib/*.fs` headers |
-| [`issue-dashboard.py`](#issue-dashboardpy--live-issuesjsonl-viewer) | Live-reload terminal UI over `issues.jsonl` |
 
-The bulk of this README documents `fc.py`. The other two scripts are
-covered in shorter sections at the end.
+The bulk of this README documents `fc.py`. `gen-lib-readme.py` is
+covered in a shorter section at the end.
+
+Both scripts use only the Python 3 standard library — no third-party
+dependencies. The project as a whole depends only on Python 3 (host)
+and `lwasm` from [lwtools](https://www.lwtools.ca/) (assembler).
 
 ---
 
@@ -344,19 +347,3 @@ variables, intra-file utility words, internal lookup-table addresses.
 
 **Output is deterministic.** Repeated runs over unchanged sources
 produce byte-identical `lib/README.md`. CI / `make` can rely on this.
-
----
-
-# `issue-dashboard.py` — Live `issues.jsonl` Viewer
-
-A Rich-based terminal UI that watches `issues.jsonl` and shows
-real-time changes as you edit issues (via the `/issues` skill or
-direct edits). Useful when triaging or planning a session — keep it
-running in another terminal and watch the table update.
-
-```sh
-python3 tools/issue-dashboard.py
-```
-
-Requires the `rich` Python package (`pip install rich`). The script
-prints a friendly install hint if `rich` isn't found.
