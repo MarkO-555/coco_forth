@@ -156,20 +156,23 @@ BASIC's `LOADM` loads it and the kernel's `START` routine jumps to `APP_BASE`.
 | Feature | Status |
 |---|---|
 | Colon definitions (`: NAME ... ;`) | done |
-| `CODE NAME ... ;CODE` (inline assembly) | done |
+| `CODE NAME ... ;CODE` (app-space inline assembly) | done |
+| `KCODE NAME ... ;KCODE` (kernel-space inline assembly) | done |
 | `VARIABLE NAME` | done |
 | `N CONSTANT NAME` | done |
 | `+FIELD`, `CFIELD:`, `FIELD:` (struct definers) | done |
 | `DATA[PY name … ]DATA` (compile-time Python data) | done |
 | `CHAR X` | done |
 | Integer literals (decimal, `0x` hex, `$` hex) | done |
-| `DO … LOOP` with `I` | done |
+| `DO … LOOP` / `DO … +LOOP` with `I` and `J` | done |
 | `IF … THEN`, `IF … ELSE … THEN` | done |
 | `BEGIN … AGAIN`, `BEGIN … UNTIL` | done |
+| `EXIT` (auto-emits one `UNLOOP` per active `DO` before exiting) | done |
 | `INCLUDE filename` | done |
-| Runtime dictionary | not applicable (cross-compiler) |
 | String literals (`S"`, `."`) | done |
+| Runtime dictionary | not applicable (cross-compiler) |
 | Interactive REPL | not applicable (cross-compiler) |
+| `BEGIN … WHILE … REPEAT` | not implemented |
 
 ---
 
@@ -228,6 +231,26 @@ update them deliberately (e.g., `LEAU 2,U` to pop the data stack). `S` is
 the return stack, `Y` and `D` are scratch. End every CODE word with `;NEXT`
 to return control to the threaded interpreter.
 
+### KCODE — kernel-space CODE words
+
+`KCODE NAME ... ;KCODE` is the same syntax as `CODE`, but the resulting
+machine code is assembled into **kernel space** (alongside the kernel's
+own primitives) rather than into the app binary. The CFA reference inside
+the application's threaded code is the same — calling a KCODE word is
+indistinguishable from calling a CODE word — but the body lives at a
+kernel-area address.
+
+Use KCODE when:
+
+- App-binary size is the binding constraint and there's slack in the
+  kernel address space (the kernel's `--stage-base` pin can lock the
+  staging address so kernel growth doesn't move the app's records).
+- A routine is shared across multiple apps and lives more naturally in
+  kernel-resident memory than copied into every app.
+
+KCODE is otherwise identical to CODE — same register conventions,
+same `;NEXT` requirement.
+
 ---
 
 ## Usage
@@ -261,4 +284,4 @@ DECB binary. fc.py auto-detects which kernel profile is in use:
 
 fc.py exposes several kernel build constants as Forth constants in source:
 `font-base`, `vram-base`, `app-base`, `trig-base`. These vary per profile
-(see `forth/kernel/README.md`) so apps can be profile-agnostic.
+(see `kernel/README.md`) so apps can be profile-agnostic.

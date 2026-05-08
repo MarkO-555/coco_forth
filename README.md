@@ -8,8 +8,8 @@ Motorola 6809 CPU. Write Forth on a modern machine, cross-compile with
 
 - **Threading**: Indirect Threaded Code (ITC)
 - **CPU**: Motorola 6809 (X=IP, U=DSP, S=RSP, Y=scratch)
-- **Kernel**: ~4K of 6809 assembly — 80+ primitives including graphics, sprites, beam tracing, and small-int literal compression (LIT0/1/2/3/4/-1)
-- **Compiler**: Python cross-compiler (`fc.py`) — Forth source to DECB binary
+- **Kernel**: ~4K of 6809 assembly — 81 primitives + 3 inline data words (`font-data`, `sprite-data`, `sin-data`); covers graphics, sprites, beam tracing, RNG, and small-int literal compression (`LIT0`/`LIT1`/`LIT2`/`LIT3`/`LIT4`/`LITM1`)
+- **Compiler**: Python cross-compiler (`fc.py`) — Forth source to DECB binary; supports CODE / KCODE inline assembly, `+FIELD` struct definers, and `DATA[PY]` compile-time data generation
 - **Target**: TRS-80 Color Computer 1/2/3, 32K minimum (64K for all-RAM apps)
 
 The kernel ships in two build profiles:
@@ -28,20 +28,21 @@ No interactive REPL or on-device compiler. The host compiles; the CoCo executes.
 ## Directory Layout
 
 ```
-forth/
-├── kernel/             6809 assembly kernel (lwasm)
-│   ├── kernel.asm      source — primitives, build profiles, variables
-│   ├── Makefile        'make' = ROM kernel; 'make allram' = all-RAM kernel
-│   └── README.md       full primitive reference and memory maps (both profiles)
-├── tools/
-│   ├── fc.py           Forth cross-compiler
-│   └── README.md       compiler pipeline docs
-├── lib/                shared Forth libraries (.fs)
-├── hello/              hello world example
-├── PROJECT_SETUP.md    setting up your own project — Makefile, fc.py options,
-│                       kernel build overrides, common scenarios
-├── LICENSE             BSD 2-clause
-└── README.md           this file
+kernel/                 6809 assembly kernel (lwasm)
+├── kernel.asm          source — primitives, build profiles, variables
+├── Makefile            'make' = ROM kernel; 'make allram' = all-RAM kernel
+└── README.md           full primitive reference and memory maps (both profiles)
+tools/
+├── fc.py               Forth cross-compiler
+└── README.md           compiler pipeline docs
+lib/                    shared Forth libraries (.fs)
+src/                    demo programs (each with its own Makefile)
+└── hello/              hello world example
+make/demo.mk            shared per-demo build rules
+PROJECT_SETUP.md        setting up your own project — Makefile, fc.py options,
+                        kernel build overrides, common scenarios
+LICENSE                 BSD 2-clause
+README.md               this file
 ```
 
 For starting a new project of your own, see [`PROJECT_SETUP.md`](PROJECT_SETUP.md).
