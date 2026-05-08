@@ -35,7 +35,7 @@ kept in sync; either is a valid entry point.
 | Project intent, design philosophy, vision                        | `COCO_RENOVATION.md`                                  |
 | Project plan, phasing, what's next                               | `ROADMAP.md`                                          |
 | Issue / bug / feature status                                     | `issues.jsonl` (use the `/issues` skill)              |
-| Past user / collaborator feedback                                | `FEEDBACK.md`, `docs/SOUND_ENGINE_PROPOSAL.md`        |
+| Past user / collaborator proposal documents                      | `docs/SOUND_ENGINE_PROPOSAL.md`                       |
 
 ## Community & history (CoCo legends)
 

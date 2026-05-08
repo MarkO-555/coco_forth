@@ -238,14 +238,26 @@ yourself but don't correct on the fly unless someone asks.
 
 ## Things to consider adding
 
-- **A live demo moment** — XRoar running the guessing game (or
-  tetris, or the clock) for 20 seconds lands better than any
-  description.
-- **The two-stack insight** (slide 5) is the "aha" moment for a
-  technical audience — slow down on it.
-- **Recent dev-experience wins** — the spacewarp author's feedback
-  validates that real game work is happening on this Forth, not just
-  toy demos. Worth a sentence at slide 11.
-- **The cartridge image** — if you have the rendered cover for
-  *Getting Started with Bare Naked Forth*, that's a strong visual
-  artifact for slide 9.
+*Original suggestions preserved from the prior notes — unfulfilled
+ideas the deck author flagged for a future revision.*
+
+- **A demo moment** — if you can show XRoar running the guessing
+  game (or tetris, or the clock) live, even briefly, that lands
+  better than any description.
+- **A slide of the kernel architecture** — the ITC threading diagram
+  (X=IP, U=DSP, S=RSP) is clarifying for a technical audience. Slide
+  6 currently shows the registers as text; an actual diagram would
+  carry more.
+- **The tutorial cover page** — it's a strong visual artifact showing
+  what the project *looks* like, not just what it does.
+- **The 6809 two-stack insight** — worth slowing down on; it's the
+  "aha" moment that explains why Forth and this hardware are a
+  natural pair. (Slide 5 is the place.)
+
+*Newer suggestions:*
+
+- **Recent dev-experience wins** — a ~5,200-line space-combat game
+  (Bare Naked Space Warp) was built on this Forth, and most of its
+  author's feedback proposals have already shipped (#477/#478,
+  #479, #487, #488, #489). Worth a sentence at slide 11 — real game
+  work is happening here, not just tutorial demos.
