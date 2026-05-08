@@ -1,4 +1,17 @@
-# fc.py — Forth Cross-Compiler
+# `tools/` — Build & Development Scripts
+
+| Script | Role |
+|--------|------|
+| [`fc.py`](#fcpy--forth-cross-compiler) | Forth cross-compiler (`.fs` source → DECB binary) — the main toolchain piece |
+| [`gen-lib-readme.py`](#gen-lib-readmepy--lib-word-index-generator) | Regenerates `lib/README.md` from `lib/*.fs` headers |
+| [`issue-dashboard.py`](#issue-dashboardpy--live-issuesjsonl-viewer) | Live-reload terminal UI over `issues.jsonl` |
+
+The bulk of this README documents `fc.py`. The other two scripts are
+covered in shorter sections at the end.
+
+---
+
+# `fc.py` — Forth Cross-Compiler
 
 `fc.py` compiles Forth source files into CoCo DECB binaries that the kernel
 executes. This document explains what it does, how it works, and — crucially
@@ -285,3 +298,65 @@ DECB binary. fc.py auto-detects which kernel profile is in use:
 fc.py exposes several kernel build constants as Forth constants in source:
 `font-base`, `vram-base`, `app-base`, `trig-base`. These vary per profile
 (see `kernel/README.md`) so apps can be profile-agnostic.
+
+---
+
+# `gen-lib-readme.py` — Lib Word Index Generator
+
+Walks every `lib/*.fs` file and regenerates `lib/README.md` — a single
+combined index with one section per library, listing description,
+`Provides:` / `Requires:` lines, and a table of public words with stack
+effects. Run it manually with `python3 tools/gen-lib-readme.py`, or as
+part of `make lib-readme` / `make all` (the root Makefile wires it in
+so the index stays current as `lib/*.fs` changes).
+
+**What it parses:**
+
+- Leading `\` comment block — the short description (with any `filename.fs —`
+  prefix stripped), and `Provides:` / `Requires:` lines (multi-line continuations
+  are joined with spaces).
+- Word definitions — `:`, `CODE`, `KCODE`, `VARIABLE` at start of line, plus
+  Forth's postfix `<value> CONSTANT <name>` form anywhere on a line.
+- Stack effects — same-line `( ... -- ... )` for colon defs, plus a fallback
+  search that handles:
+  - preceding `\` comments naming the word, including divider-decorated
+    forms like `\ ── name ( a -- b ) ───`
+  - `;;;`-style stack comments inside the body of a CODE/KCODE word
+  - same-line `\ ( a -- b )` trailing comments after `CODE` / `KCODE`
+- Forth-style word-name boundaries — names ending in `?`, `!`, `/` etc. work
+  (Python's `\b` doesn't, so the script uses explicit name-char lookarounds).
+
+**What it filters:** any word whose name starts with `_` is treated as
+private and omitted. The `_`-prefix convention is the project's signal
+for "internal helper, not part of the public API." Use it for scratch
+variables, intra-file utility words, internal lookup-table addresses.
+
+**What it does *not* do:**
+
+- It doesn't reformat or modify any `.fs` source. Source-side cleanup
+  (adding stack effects, fixing `Provides:` lists) happens by hand and
+  the generator just reads what's there.
+- It doesn't validate that `Provides:` matches the actual word list.
+  If they drift, you'll see the table and the `Provides:` line side by
+  side and notice the mismatch — but the generator won't yell about it.
+- It doesn't handle `IMMEDIATE`, vocabularies, or runtime dictionary
+  features (none of which fc.py supports anyway).
+
+**Output is deterministic.** Repeated runs over unchanged sources
+produce byte-identical `lib/README.md`. CI / `make` can rely on this.
+
+---
+
+# `issue-dashboard.py` — Live `issues.jsonl` Viewer
+
+A Rich-based terminal UI that watches `issues.jsonl` and shows
+real-time changes as you edit issues (via the `/issues` skill or
+direct edits). Useful when triaging or planning a session — keep it
+running in another terminal and watch the table update.
+
+```sh
+python3 tools/issue-dashboard.py
+```
+
+Requires the `rich` Python package (`pip install rich`). The script
+prints a friendly install hint if `rich` isn't found.
