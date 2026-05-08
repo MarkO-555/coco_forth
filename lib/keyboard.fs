@@ -1,7 +1,11 @@
 \ keyboard.fs — CoCo keyboard matrix constants and utilities
 \
+\ Provides: KB-C0..KB-C7 (column strobe masks),
+\           KB-R0..KB-R7 (row bit masks),
+\           KEY-HELD?
+\ Requires: kernel primitives KBD-SCAN, AND, SWAP
+\
 \ INCLUDE this file in any application that needs direct key scanning.
-\ Requires the kernel primitives: KBD-SCAN, AND, SWAP.
 \
 \ Usage example:
 \   INCLUDE lib/keyboard.fs

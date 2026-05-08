@@ -1,7 +1,8 @@
 \ dac.fs — Joystick reading via DAC successive approximation
 \
 \ Provides: joy-sel-rx, joy-sel-ry, joy-sel-lx, joy-sel-ly,
-\           joy-bit, joy-sample, joy-x, joy-y, joy-fire?
+\           joy-bit, joy-sample, joy-x, joy-y,
+\           joy-fire?, joy-fire-l?
 \ Requires: kernel primitives C@, C!, AND, OR, 2DUP, DROP, LSHIFT, KBD-SCAN
 \
 \ The CoCo reads joystick axes via a 6-bit DAC ($FF20) and a

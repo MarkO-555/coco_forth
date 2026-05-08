@@ -37,15 +37,15 @@ VARIABLE cb                       \ cached bytes per row
 \ and advancing column-by-column.  No cursor wrap or scroll; caller is
 \ responsible for keeping (cx+len) inside the screen.
 
-VARIABLE rt-x                     \ start column captured at entry
-VARIABLE rt-y                     \ start row captured at entry
+VARIABLE _rt-x                     \ start column captured at entry
+VARIABLE _rt-y                     \ start row captured at entry
 
 : rg-type  ( addr len cx cy -- )
-  rt-y !  rt-x !
+  _rt-y !  _rt-x !
   0 DO
     DUP I + C@                    \ ( addr char )
-    rt-x @ I +                    \ ( addr char cx+I )
-    rt-y @                        \ ( addr char cx+I cy )
+    _rt-x @ I +                    \ ( addr char cx+I )
+    _rt-y @                        \ ( addr char cx+I cy )
     rg-char                       \ ( addr )
   LOOP
   DROP ;

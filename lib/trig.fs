@@ -34,7 +34,7 @@
 \ ── Signed divide by 128 ────────────────────────────────────────────────
 \ RSHIFT is logical (unsigned) on the 6809, so we handle sign manually.
 
-: s/128  ( n -- n/128 )
+: _s/128  ( n -- n/128 )
   DUP 0 < IF
     NEGATE 7 RSHIFT NEGATE
   ELSE
@@ -44,26 +44,26 @@
 \ ── sin ( angle -- value ) ───────────────────────────────────────────────
 \ Return sine of angle (0-360) as signed fixed-point (-127..+127).
 
-VARIABLE sa-tmp
+VARIABLE _sa-tmp
 
 : sin  ( angle -- value )
   \ Normalize to 0-359 (handles any positive angle)
   360 /MOD DROP
-  sa-tmp !
+  _sa-tmp !
 
-  sa-tmp @ 180 < IF
+  _sa-tmp @ 180 < IF
     \ Quadrant 1 or 2: sin is positive
-    sa-tmp @ 90 > IF
-      180 sa-tmp @ - trig-base + C@
+    _sa-tmp @ 90 > IF
+      180 _sa-tmp @ - trig-base + C@
     ELSE
-      sa-tmp @ trig-base + C@
+      _sa-tmp @ trig-base + C@
     THEN
   ELSE
     \ Quadrant 3 or 4: sin is negative
-    sa-tmp @ 270 > IF
-      360 sa-tmp @ - trig-base + C@ NEGATE
+    _sa-tmp @ 270 > IF
+      360 _sa-tmp @ - trig-base + C@ NEGATE
     ELSE
-      sa-tmp @ 180 - trig-base + C@ NEGATE
+      _sa-tmp @ 180 - trig-base + C@ NEGATE
     THEN
   THEN ;
 
@@ -75,16 +75,16 @@ VARIABLE sa-tmp
 \ X displacement: dx = length * cos(angle) / 128
 \ Angle 0 = right, 90 = up, 180 = left, 270 = down.
 
-VARIABLE ad-len
+VARIABLE _ad-len
 
 : angle-dx  ( angle length -- dx )
-  ad-len !
-  cos ad-len @ * s/128 ;
+  _ad-len !
+  cos _ad-len @ * _s/128 ;
 
 \ ── angle-dy ( angle length -- dy ) ─────────────────────────────────────
 \ Y displacement: dy = -length * sin(angle) / 128
 \ Negative because screen Y increases downward but angle 90 = up.
 
 : angle-dy  ( angle length -- dy )
-  ad-len !
-  sin NEGATE ad-len @ * s/128 ;
+  _ad-len !
+  sin NEGATE _ad-len @ * _s/128 ;

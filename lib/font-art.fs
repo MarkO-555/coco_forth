@@ -18,4 +18,4 @@
   DUP $5A > IF DROP $20 THEN
   $20 - 8 * font-base + ;
 
-: init-font  font-data font-base 472 CMOVE ;
+: init-font  ( -- )  font-data font-base 472 CMOVE ;

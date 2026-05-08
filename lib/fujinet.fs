@@ -24,11 +24,17 @@
 \ words are position-independent — fc.py assembles each CODE word
 \ at ORG $0000 then relocates the bytes into the app binary.
 \
-\ Provides:
-\   dw-write ( buf len -- )       send len bytes from buf
-\   dw-read  ( buf len -- ok )    read len bytes into buf; ok = 1 on success
-\   fn-ready ( -- )               FujiNet $E2,$00 ping until the device acks
-\   fn-time  ( buf -- )           write 6-byte time into buf:
+\ Provides: dw-write, dw-read,
+\           FN-OP-FUJI, FN-CMD-READY, FN-CMD-TIME (protocol constants),
+\           fn-cmd (buffer variable),
+\           fn-ping, fn-ready, fn-ready/N, fn-time, fn-time/N
+\ Requires: HDB-DOS cart at $D93F (DWRead) and $D941 (DWWrite),
+\           kernel CODE infrastructure (no Forth-level deps)
+\
+\ dw-write ( buf len -- )       send len bytes from buf
+\ dw-read  ( buf len -- ok )    read len bytes into buf; ok = 1 on success
+\ fn-ready ( -- )               FujiNet $E2,$00 ping until the device acks
+\ fn-time  ( buf -- )           write 6-byte time into buf:
 \                                   buf[0]=year-1900  buf[3]=hour
 \                                   buf[1]=month      buf[4]=minute
 \                                   buf[2]=day        buf[5]=second
@@ -143,15 +149,15 @@ VARIABLE fn-cmd
 \ Stack-only solution would need WHILE/REPEAT (which fc.py lacks),
 \ so use a small flag variable.  Typical caller passes ~30 retries
 \ for a ~1-2 second boot probe.
-VARIABLE fn-rdy-ok
+VARIABLE _fn-rdy-ok
 : fn-ready/N  ( n -- ok )
-  0 fn-rdy-ok !
+  0 _fn-rdy-ok !
   BEGIN
-    fn-ping IF -1 fn-rdy-ok ! THEN
+    fn-ping IF -1 _fn-rdy-ok ! THEN
     1 -
-    DUP 0=  fn-rdy-ok @  OR
+    DUP 0=  _fn-rdy-ok @  OR
   UNTIL
-  DROP fn-rdy-ok @ ;
+  DROP _fn-rdy-ok @ ;
 
 
 \ ── fn-time: read 6 bytes of wall-clock time into buf ────────────

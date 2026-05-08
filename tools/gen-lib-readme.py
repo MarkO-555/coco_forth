@@ -20,7 +20,9 @@ from pathlib import Path
 LIB_DIR = Path(__file__).parent.parent / "lib"
 OUT_PATH = LIB_DIR / "README.md"
 
-DEFN_RE = re.compile(r"^(:|CODE|KCODE|VARIABLE|CONSTANT)\s+(\S+)(.*)?$")
+DEFN_RE = re.compile(r"^(:|CODE|KCODE|VARIABLE)\s+(\S+)(.*)?$")
+# Forth's CONSTANT is postfix: `<value> CONSTANT <name>`. Match anywhere on a line.
+CONST_RE = re.compile(r"^\s*\S+\s+CONSTANT\s+(\S+)\s*(.*)?$")
 STACK_RE = re.compile(r"\(\s*([^()]*?)--\s*([^()]*?)\s*\)")
 
 KIND_LABEL = {
@@ -98,20 +100,36 @@ def format_stack(before, after):
     return f"( {b} -- {a} )"
 
 
-def find_named_stack(preceding_lines, name):
-    """Search the lines just before a CODE word for a stack-effect comment that
-    names the word.  The line must be a Forth comment (`\\ ...`), but the word
-    name may be anywhere on the line — it doesn't need to be the first token,
-    so a header like `\\ ── snd-tone ( pitch duration -- ) ───` still matches.
+def find_code_stack(lines, idx, name):
+    """Find a stack effect for the CODE word at `lines[idx]`.
+
+    Looks in two places:
+      - up to 8 preceding lines, for a Forth comment `\\ ... NAME ( a -- b ) ...`
+        (works around dividers like `\\ ── NAME ( a -- b ) ───`).
+      - up to 4 following lines, for a `;;; ( a -- b )` bare-stack comment
+        inside the CODE body (a common kernel-style convention).
+
+    Forth names contain hyphens, slashes, `?`, `!` — Python's `\\b` doesn't
+    cope with those at the boundaries, so we use explicit name-char lookarounds.
     """
+    namechar = r"[A-Za-z0-9_\-/\?\!]"
     name_pat = re.compile(
-        r"\b" + re.escape(name) + r"\b\s*\(\s*([^()]*?)--\s*([^()]*?)\s*\)")
-    for line in preceding_lines:
+        r"(?<!" + namechar + r")" + re.escape(name) +
+        r"(?!" + namechar + r")\s*\(\s*([^()]*?)--\s*([^()]*?)\s*\)")
+    bare_pat = re.compile(r"^\s*;{2,}\s*\(\s*([^()]*?)--\s*([^()]*?)\s*\)")
+
+    for line in lines[max(0, idx - 8):idx]:
         if not line.lstrip().startswith("\\"):
             continue
         m = name_pat.search(line)
         if m:
             return format_stack(m.group(1), m.group(2))
+
+    for line in lines[idx + 1:idx + 5]:
+        m = bare_pat.match(line)
+        if m:
+            return format_stack(m.group(1), m.group(2))
+
     return ""
 
 
@@ -122,23 +140,32 @@ def parse_file(path):
 
     words = []
     for i, line in enumerate(lines):
+        # Try the standard prefix-keyword form first.
         m = DEFN_RE.match(line)
-        if not m:
-            continue
-        kind, name, rest = m.group(1), m.group(2), m.group(3) or ""
-        if name.startswith("_"):
+        if m:
+            kind, name, rest = m.group(1), m.group(2), m.group(3) or ""
+            if name.startswith("_"):
+                continue
+            stack = ""
+            if kind in (":", "CODE", "KCODE"):
+                # Try same-line stack effect first (works for `: name ( a -- b )`
+                # and `CODE name  \\ ( a -- b )` on the same line).
+                sm = STACK_RE.search(rest)
+                if sm:
+                    stack = format_stack(sm.group(1), sm.group(2))
+            if not stack and kind in (":", "CODE", "KCODE"):
+                # Fall back to preceding `\\` block or following `;;;` comment.
+                stack = find_code_stack(lines, i, name)
+            words.append((name, stack, KIND_LABEL[kind]))
             continue
 
-        stack = ""
-        if kind == ":":
-            sm = STACK_RE.search(rest)
-            if sm:
-                stack = format_stack(sm.group(1), sm.group(2))
-        elif kind in ("CODE", "KCODE"):
-            preceding = lines[max(0, i - 8):i]
-            stack = find_named_stack(preceding, name)
-
-        words.append((name, stack, KIND_LABEL[kind]))
+        # Forth's `<value> CONSTANT <name>` postfix form.
+        m = CONST_RE.match(line)
+        if m:
+            name = m.group(1)
+            if name.startswith("_"):
+                continue
+            words.append((name, "", KIND_LABEL["CONSTANT"]))
 
     return short, provides, requires, words
 

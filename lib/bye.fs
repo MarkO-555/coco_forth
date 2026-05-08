@@ -25,7 +25,7 @@ INCLUDE screen.fs
   cls-black
   halt ;
 
-CODE basic-cold
+CODE basic-cold  \ ( -- )
         JMP     $A027
 ;CODE
 

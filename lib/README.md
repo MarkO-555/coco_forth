@@ -56,7 +56,7 @@ Clean program exit
 | Word | Stack | Kind |
 |------|-------|------|
 | `bye` | `( -- )` | colon |
-| `basic-cold` |  | CODE |
+| `basic-cold` | `( -- )` | CODE |
 | `exit-basic` | `( -- )` | colon |
 
 ---
@@ -71,8 +71,7 @@ CG mode text rendering (2 bits/pixel)
 
 | Word | Stack | Kind |
 |------|-------|------|
-| `ftmp` |  | var |
-| `init-expand` |  | colon |
+| `init-expand` | `( -- )` | colon |
 | `expand-hi` | `( byte -- cg-byte )` | colon |
 | `expand-lo` | `( byte -- cg-byte )` | colon |
 | `cg-char` | `( char cx cy -- )` | colon |
@@ -83,7 +82,7 @@ CG mode text rendering (2 bits/pixel)
 
 Joystick reading via DAC successive approximation
 
-**Provides:** joy-sel-rx, joy-sel-ry, joy-sel-lx, joy-sel-ly, joy-bit, joy-sample, joy-x, joy-y, joy-fire?
+**Provides:** joy-sel-rx, joy-sel-ry, joy-sel-lx, joy-sel-ly, joy-bit, joy-sample, joy-x, joy-y, joy-fire?, joy-fire-l?
 
 **Requires:** kernel primitives C@, C!, AND, OR, 2DUP, DROP, LSHIFT, KBD-SCAN
 
@@ -129,7 +128,7 @@ Artifact-safe font for RG6 NTSC display
 | Word | Stack | Kind |
 |------|-------|------|
 | `glyph-addr` | `( char -- addr )` | colon |
-| `init-font` |  | colon |
+| `init-font` | `( -- )` | colon |
 
 ---
 
@@ -143,11 +142,8 @@ Artifact-safe font for RG6 NTSC display
 
 | Word | Stack | Kind |
 |------|-------|------|
-| `fp` |  | var |
-| `fb` | `( byte -- )` | colon |
-| `fg` | `( b6 b5 b4 b3 b2 b1 b0 -- )` | colon |
 | `glyph-addr` | `( char -- addr )` | colon |
-| `init-font` |  | colon |
+| `init-font` | `( -- )` | colon |
 
 ---
 
@@ -155,16 +151,20 @@ Artifact-safe font for RG6 NTSC display
 
 FujiNet device support for the CoCo
 
-**Provides:**  dw-write ( buf len -- )       send len bytes from buf dw-read  ( buf len -- ok )    read len bytes into buf; ok = 1 on success fn-ready ( -- )               FujiNet $E2,$00 ping until the device acks fn-time  ( buf -- )           write 6-byte time into buf: buf[0]=year-1900  buf[3]=hour buf[1]=month      buf[4]=minute buf[2]=day        buf[5]=second
+**Provides:** dw-write, dw-read, FN-OP-FUJI, FN-CMD-READY, FN-CMD-TIME (protocol constants), fn-cmd (buffer variable), fn-ping, fn-ready, fn-ready/N, fn-time, fn-time/N
+
+**Requires:** HDB-DOS cart at $D93F (DWRead) and $D941 (DWWrite), kernel CODE infrastructure (no Forth-level deps)
 
 | Word | Stack | Kind |
 |------|-------|------|
-| `dw-write` |  | CODE |
-| `dw-read` |  | CODE |
+| `dw-write` | `( buf len -- )` | CODE |
+| `dw-read` | `( buf len -- ok )` | CODE |
+| `FN-OP-FUJI` |  | const |
+| `FN-CMD-READY` |  | const |
+| `FN-CMD-TIME` |  | const |
 | `fn-cmd` |  | var |
 | `fn-ping` | `( -- ok )` | colon |
 | `fn-ready` | `( -- )` | colon |
-| `fn-rdy-ok` |  | var |
 | `fn-ready/N` | `( n -- ok )` | colon |
 | `fn-time` | `( buf -- )` | colon |
 | `fn-time/N` | `( buf n -- ok )` | colon |
@@ -175,9 +175,29 @@ FujiNet device support for the CoCo
 
 CoCo keyboard matrix constants and utilities
 
+**Provides:** KB-C0..KB-C7 (column strobe masks), KB-R0..KB-R7 (row bit masks), KEY-HELD?
+
+**Requires:** kernel primitives KBD-SCAN, AND, SWAP
+
 | Word | Stack | Kind |
 |------|-------|------|
-| `KEY-HELD?` |  | colon |
+| `KB-C0` |  | const |
+| `KB-C1` |  | const |
+| `KB-C2` |  | const |
+| `KB-C3` |  | const |
+| `KB-C4` |  | const |
+| `KB-C5` |  | const |
+| `KB-C6` |  | const |
+| `KB-C7` |  | const |
+| `KB-R0` |  | const |
+| `KB-R1` |  | const |
+| `KB-R2` |  | const |
+| `KB-R3` |  | const |
+| `KB-R4` |  | const |
+| `KB-R5` |  | const |
+| `KB-R6` |  | const |
+| `KB-R7` |  | const |
+| `KEY-HELD?` | `( col_mask row_bit -- flag )` | colon |
 
 ---
 
@@ -214,24 +234,19 @@ Spatial proximity query (Manhattan-distance bitmask)
 
 RG6 artifact-color pixel primitives
 
-**Provides:** rg-init, rg-pcls, rg-pset (kernel), rg-pget, rg-hline, rg-line (kernel)
+**Provides:** rv (VRAM base variable), rg-init, rg-init-at, rg-pcls, rg-pset (kernel), rg-pget, rg-addr, rg-hline, rg-line (kernel)
 
 **Requires:** kernel primitives, vdg.fs (set-sam-v, set-sam-f, set-pia)
 
 | Word | Stack | Kind |
 |------|-------|------|
 | `rv` |  | var |
-| `init-tables` | `( -- )` | colon |
 | `rg-init-at` | `( base -- )` | colon |
 | `rg-init` | `( -- )` | colon |
 | `rg-pcls` | `( -- )` | colon |
-| `pa` |  | var |
-| `ps` |  | var |
 | `rg-addr` | `( x y -- )` | colon |
 | `rg-pget` | `( x y -- raw )` | colon |
-| `hl-c` |  | var |
 | `rg-hline` | `( x1 x2 y color -- )` | colon |
-| `tp` |  | var |
 
 ---
 
@@ -248,8 +263,6 @@ RG mode text rendering (1 bit/pixel)
 | `cv` |  | var |
 | `cb` |  | var |
 | `rg-char` | `( char cx cy -- )` | colon |
-| `rt-x` |  | var |
-| `rt-y` |  | var |
 | `rg-type` | `( addr len cx cy -- )` | colon |
 
 ---
@@ -258,9 +271,13 @@ RG mode text rendering (1 bit/pixel)
 
 compatibility shim
 
+**Provides:** seed
+
+**Requires:** kvar-seed (kernel-exposed VAR_SEED address)
+
 | Word | Stack | Kind |
 |------|-------|------|
-| `seed` |  | colon |
+| `seed` | `( -- addr )` | colon |
 
 ---
 
@@ -289,8 +306,6 @@ SG6 mode text rendering (block-pixel font)
 
 | Word | Stack | Kind |
 |------|-------|------|
-| `sg-g` |  | var |
-| `sg-d` |  | var |
 | `sg6-row` | `( font-byte -- )` | colon |
 | `sg6-char` | `( char cx cy -- )` | colon |
 
@@ -300,18 +315,17 @@ SG6 mode text rendering (block-pixel font)
 
 DAC sound library for the CoCo
 
-**Provides:** snd-init, snd-tone, snd-noise, snd-beep, snd-zap, snd-boom, snd-chirp, snd-dock, snd-hit
+**Provides:** snd-init, snd-tone, snd-saw, snd-tri, snd-sin, snd-noise, snd-pause, snd-beep, snd-zap, snd-boom, snd-chirp, snd-dock, snd-hit
 
-**Requires:** kernel primitives rng (for snd-noise)
+**Requires:** kernel primitives rng + kvar-seed (for snd-noise), lib/trig.fs init-sin populating trig-base (for snd-sin)
 
 | Word | Stack | Kind |
 |------|-------|------|
-| `snd-init` |  | CODE |
+| `snd-init` | `( -- )` | CODE |
 | `snd-tone` | `( pitch duration -- )` | CODE |
 | `snd-saw` | `( step pitch duration -- )` | CODE |
 | `snd-tri` | `( pitch duration -- )` | colon |
 | `snd-sin` | `( pitch duration -- )` | CODE |
-| `noise-delay` |  | var |
 | `snd-noise` | `( delay duration -- )` | colon |
 | `snd-beep` | `( -- )` | colon |
 | `snd-zap` | `( -- )` | colon |
@@ -347,11 +361,8 @@ Sine/cosine lookup table for angle-based operations
 | Word | Stack | Kind |
 |------|-------|------|
 | `init-sin` | `( -- )` | colon |
-| `s/128` | `( n -- n/128 )` | colon |
-| `sa-tmp` |  | var |
 | `sin` | `( angle -- value )` | colon |
 | `cos` | `( angle -- value )` | colon |
-| `ad-len` |  | var |
 | `angle-dx` | `( angle length -- dx )` | colon |
 | `angle-dy` | `( angle length -- dy )` | colon |
 

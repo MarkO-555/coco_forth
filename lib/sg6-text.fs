@@ -22,20 +22,20 @@
 \   $0400 cv !
 \   CHAR A 1 1 sg6-char
 
-VARIABLE sg-g                     \ current glyph address
-VARIABLE sg-d                     \ current dest address
+VARIABLE _sg-g                     \ current glyph address
+VARIABLE _sg-d                     \ current dest address
 
 : sg6-row  ( font-byte -- )
   5 0 DO
     DUP $80 AND IF $BF ELSE $80 THEN
-    sg-d @ I + C!
+    _sg-d @ I + C!
     DUP +                         \ left-shift by 1
   LOOP DROP
-  sg-d @ 32 + sg-d ! ;           \ advance to next screen row
+  _sg-d @ 32 + _sg-d ! ;           \ advance to next screen row
 
 : sg6-char  ( char cx cy -- )
-  32 * SWAP + cv @ + sg-d !       \ sg-d = vram + cy*32 + cx
-  glyph-addr sg-g !
+  32 * SWAP + cv @ + _sg-d !       \ _sg-d = vram + cy*32 + cx
+  glyph-addr _sg-g !
   7 0 DO
-    sg-g @ I + C@ sg6-row
+    _sg-g @ I + C@ sg6-row
   LOOP ;

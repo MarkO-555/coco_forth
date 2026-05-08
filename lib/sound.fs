@@ -1,9 +1,11 @@
 \ sound.fs — DAC sound library for the CoCo
 \
-\ Provides: snd-init, snd-tone, snd-noise, snd-beep, snd-zap, snd-boom,
-\           snd-chirp, snd-dock, snd-hit
+\ Provides: snd-init, snd-tone, snd-saw, snd-tri, snd-sin, snd-noise,
+\           snd-pause, snd-beep, snd-zap, snd-boom, snd-chirp, snd-dock,
+\           snd-hit
 \
-\ Requires: kernel primitives rng (for snd-noise)
+\ Requires: kernel primitives rng + kvar-seed (for snd-noise),
+\           lib/trig.fs init-sin populating trig-base (for snd-sin)
 \
 \ Plays square-wave tones and white-noise bursts through the 6-bit DAC
 \ at $FF20.  PIA initialization values come from Dungeons of Daggorath's
@@ -14,7 +16,7 @@
 \ ── Internal: PIA setup ─────────────────────────────────────────────────
 \ snd-init configures the audio path once.  snd-tone and snd-noise call
 \ it on every invocation; the cost is 5 byte-stores so it's cheap.
-CODE snd-init
+CODE snd-init  \ ( -- )
         LDB     #$34
         STB     $FF01           ; PIA0 CR-A: SEL1=0, data reg, no IRQ
         STB     $FF03           ; PIA0 CR-B: SEL2=0, data reg, no IRQ
@@ -164,13 +166,13 @@ SIN_HALF_DONE
 \ White-noise burst by writing random DAC values.
 \   delay    inter-sample wait (lower = higher pitched hiss)
 \   duration sample count
-VARIABLE noise-delay
+VARIABLE _noise-delay
 : snd-noise  ( delay duration -- )
   snd-init
-  SWAP noise-delay !
+  SWAP _noise-delay !
   0 DO
     rng kvar-seed @ $FC AND $FF20 C!
-    noise-delay @ 0 DO LOOP
+    _noise-delay @ 0 DO LOOP
   LOOP ;
 
 \ ── Convenience effects ────────────────────────────────────────────────
