@@ -5,7 +5,8 @@
 \ its own speed, with bright inverse-video heads and dimmer normal
 \ trails.
 \
-\ Press any key on title screen to start.  Close XRoar to exit.
+\ Press any key on title screen to start.  Press BREAK to exit
+\ (returns to BASIC OK prompt in ROM mode).
 \
 \ Build:   make
 \ Load:    LOADM"RAIN":EXEC
@@ -14,6 +15,7 @@
 
 INCLUDE ../../lib/rng.fs
 INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/bye.fs
 
 \ ── Normal-video text output ──────────────────────────────────────
 \ vemit: green-on-black text (normal video).  EMIT writes inverse.
@@ -192,6 +194,9 @@ VARIABLE col      \ current column being processed
 
     $FF $FFD6 C!                  \ SAM normal speed (display refresh)
     vsync
+
+    \ BREAK exits to BASIC (ROM mode only — bye in all-RAM)
+    KEY? IF KEY $03 = IF cls-black exit-basic THEN THEN
   0 UNTIL ;
 
 rain

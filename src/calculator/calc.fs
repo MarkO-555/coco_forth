@@ -10,12 +10,15 @@
 \   Rows 13-14 : [0][C][=][+]
 \   Row  15    : OP: / MEM: status line
 \
+\ Press BREAK to exit (returns to BASIC OK prompt in ROM mode).
+\
 \ Build:   make
 \ Load:    LOADM"CALC":EXEC
 
 \ ── Shared libraries ─────────────────────────────────────────────────────────
 
 INCLUDE ../../lib/print.fs
+INCLUDE ../../lib/bye.fs
 
 \ ── Video RAM primitives ──────────────────────────────────────────────────────
 
@@ -236,10 +239,12 @@ VARIABLE DR
   DROP ;
 
 \ FLASH-AT ( char col row -- )  briefly show char as black-on-green, then restore
+\ Six vsync frames ≈ 100ms — frame-paced so the flash duration is the
+\ same regardless of SAM CPU speed (0.89 / 1.78 MHz).
 : FLASH-AT
   BTN-R !  BTN-C !
   DUP INV-BYTE $40 +  BTN-C @  BTN-R @  VRAW!
-  2000 0 DO LOOP
+  6 0 DO vsync LOOP
   INV-BYTE            BTN-C @  BTN-R @  VRAW! ;
 
 \ FLASH-KEY ( char -- )  flash the on-screen label matching the key
@@ -264,7 +269,13 @@ VARIABLE DR
   DUP CHAR + = IF DROP CHAR + 21 14 FLASH-AT EXIT THEN
   DROP ;
 
-: CALC   BEGIN  KEY DUP FLASH-KEY DISPATCH  AGAIN ;
+\ BREAK ($03) exits to BASIC OK prompt (ROM mode only).
+: CALC
+  BEGIN
+    KEY
+    DUP $03 = IF DROP CLEAR-SCREEN exit-basic THEN
+    DUP FLASH-KEY DISPATCH
+  AGAIN ;
 
 \ ── Static screen ─────────────────────────────────────────────────────────────
 

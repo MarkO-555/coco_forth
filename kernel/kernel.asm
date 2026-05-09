@@ -1675,8 +1675,13 @@ CODE_HALT
 
 ;;; ─── START ─────────────────────────────────────────────────────────────────
 ;;; Hardware initialisation and application entry.
-;;; Called by BOOTSTRAP after the kernel has been copied to $8000.
-;;; At this point all-RAM mode is active and interrupts are masked.
+;;;
+;;; Two entry paths depending on build profile:
+;;;   ROM mode    (default): jumped to directly by LOADM exec — kernel is
+;;;                already at $2000, BASIC ROMs still alive at $8000+.
+;;;   All-RAM mode:           jumped to by BOOTSTRAP after the staged
+;;;                kernel has been copied from $1000 to $E000, ROMs paged
+;;;                out via SAM TY, interrupts already masked.
 ;;;
 ;;; Sets up:
 ;;;   - Direct page register ($00)

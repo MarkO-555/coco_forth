@@ -148,24 +148,30 @@ VARIABLE ax  VARIABLE ay  VARIABLE fc
 
 \ ── Main ─────────────────────────────────────────────────────────────────
 
+\ Wait for a keypress between tests; BREAK ($03) early-exits.  Polled
+\ via KEY? + KEY (rather than blocking KEY alone) so a held BREAK is
+\ honoured immediately instead of waiting for a transition.
+: wait-key  ( -- )
+  BEGIN KEY? UNTIL  KEY  $03 = IF exit-basic THEN ;
+
 : main  ( -- )
   rg-init
   init-sprites
 
   test-bars
-  KEY DROP  rg-pcls
+  wait-key  rg-pcls
 
   test-lines
-  KEY DROP  rg-pcls
+  wait-key  rg-pcls
 
   test-sprites
-  KEY DROP
+  wait-key
 
   test-erase
-  KEY DROP  rg-pcls
+  wait-key  rg-pcls
 
   test-angles
-  KEY DROP
+  wait-key
 
   exit-basic ;
 

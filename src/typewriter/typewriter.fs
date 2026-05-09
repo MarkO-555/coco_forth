@@ -4,6 +4,8 @@
 \ them to the VDG screen.  Tests CODE_KEY, EMIT, CR, and the full
 \ MATRIX2ASCII keyboard scan path.
 \
+\ Press BREAK to exit (returns to BASIC OK prompt in ROM mode).
+\
 \ Key behaviour:
 \   Printable keys  -> emit character at cursor, advance
 \   ENTER  ($0D)    -> move to next row (CR)
