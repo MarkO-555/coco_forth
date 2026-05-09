@@ -8,6 +8,7 @@
 \ rg-pset and rg-line are kernel CODE words.
 \ rg-pget, rg-addr, rg-hline are Forth words defined here.
 
+\ rv — VRAM base address for the active RG6 framebuffer; set by rg-init-at.
 VARIABLE rv                       \ VRAM base address
 
 \ ── Lookup tables ─────────────────────────────────────────────────────────
@@ -20,9 +21,7 @@ $8730 CONSTANT _MSKTAB
   6 _SHFTAB     C!  4 _SHFTAB 1 + C!  2 _SHFTAB 2 + C!  0 _SHFTAB 3 + C!
   $3F _MSKTAB     C!  $CF _MSKTAB 1 + C!  $F3 _MSKTAB 2 + C!  $FC _MSKTAB 3 + C! ;
 
-\ rg-init-at points the VDG at an arbitrary $0200-aligned VRAM base
-\ and clears 6K of pixel memory.  rg-init uses the kernel-defined
-\ vram-base ($0600 in both ROM and all-RAM modes by default).
+\ rg-init-at — Point the VDG at the given $0200-aligned VRAM base, set up shift/mask tables, and clear 6K of pixel memory. (rg-init wraps this with the kernel's default vram-base.)
 : rg-init-at  ( base -- )
   _init-tables
   DUP rv !  KVAR-RGVRAM !
@@ -38,6 +37,7 @@ $8730 CONSTANT _MSKTAB
 VARIABLE _pa
 VARIABLE _ps
 
+\ rg-addr — Compute the byte address and intra-byte shift for pixel (x,y) in the active framebuffer; stores results in _pa (addr) and _ps (shift index).
 : rg-addr  ( x y -- )
   32 * rv @ + SWAP
   DUP 3 AND _ps !

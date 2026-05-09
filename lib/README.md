@@ -4,6 +4,8 @@
 
 Each table lists the public words from one file. Words whose names begin with `_` are treated as private and omitted.
 
+Each file shows a description list (what each word does) followed by a cost table (stack effect, kind, bytes, cycles). Descriptions are sourced from a `\ name — short description` comment placed within six lines of the word's definition (preferred), falling back to `reference.html` for words documented there. When both exist and disagree, the source comment wins and the generator emits a docs-drift warning.
+
 ---
 
 ## Files
@@ -39,9 +41,11 @@ Beam pixel-save/restore system for artifact-free rendering
 
 **Requires:** kernel (VAR_BEAM_BUF, VAR_BEAM_VRAM, VAR_BEAM_CNT, VAR_LINE_*, VAR_RGVRAM), rg-pixel.fs
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `beam-restore-slice` | `( buf start count -- )` | CODE |
+- **`beam-restore-slice`** — Restore count pixels from buffer at index start using saved background colors. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~181cy/iter)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `beam-restore-slice` | `( buf start count -- )` | CODE | 121 | 280 |
 
 ---
 
@@ -53,11 +57,15 @@ Clean program exit
 
 **Requires:** vdg.fs (reset-text), screen.fs (cls-black), kernel halt
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `bye` | `( -- )` | colon |
-| `basic-cold` | `( -- )` | CODE |
-| `exit-basic` | `( -- )` | colon |
+- **`bye`** — restore VDG text mode, clear screen black, halt.
+- **`basic-cold`** — ROM-mode-only.  JMPs to Color BASIC's cold-start
+- **`exit-basic`** — Cleanup + basic-cold.  ROM-mode-only, equivalent to
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `bye` | `( -- )` | colon | 10 | 2994 |
+| `basic-cold` | `( -- )` | CODE | 5 | 4 |
+| `exit-basic` | `( -- )` | colon | 10 | 2882 |
 
 ---
 
@@ -69,12 +77,17 @@ CG mode text rendering (2 bits/pixel)
 
 **Requires:** glyph-addr (from font5x7.fs), cv, cb (from rg-text.fs), tp, tb (from datawrite.fs), kernel primitives RSHIFT, AND, IF, ELSE, THEN, *, +, @, !, C@, C!, SWAP, OVER, DROP, DO, LOOP, I
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `init-expand` | `( -- )` | colon |
-| `expand-hi` | `( byte -- cg-byte )` | colon |
-| `expand-lo` | `( byte -- cg-byte )` | colon |
-| `cg-char` | `( char cx cy -- )` | colon |
+- **`init-expand`** — Build the 16-entry nibble expansion table at $7CE0. Call once at startup (after init-font).
+- **`expand-hi`** — Expand the high nibble (bits 7–4) of a font byte to a CG byte via the lookup table.
+- **`expand-lo`** — Expand bit 3 of a font byte to a CG byte (the 5th pixel column).
+- **`cg-char`** — Render a character at column cx, row cy in a CG mode (2 bits per pixel). Each glyph column becomes 2 CG pixels wide. *(has DO/LOOP)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `init-expand` | `( -- )` | colon | 104 | 4594 |
+| `expand-hi` | `( byte -- cg-byte )` | colon | 16 | 250 |
+| `expand-lo` | `( byte -- cg-byte )` | colon | 24 | 280 |
+| `cg-char` | `( char cx cy -- )` | colon | 108 | 3432 |
 
 ---
 
@@ -86,18 +99,29 @@ Joystick reading via DAC successive approximation
 
 **Requires:** kernel primitives C@, C!, AND, OR, 2DUP, DROP, LSHIFT, KBD-SCAN
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `joy-sel-rx` | `( -- )` | colon |
-| `joy-sel-ry` | `( -- )` | colon |
-| `joy-sel-lx` | `( -- )` | colon |
-| `joy-sel-ly` | `( -- )` | colon |
-| `joy-bit` | `( result bit -- result' )` | colon |
-| `joy-sample` | `( -- 0..63 )` | colon |
-| `joy-x` | `( -- 0..63 )` | colon |
-| `joy-y` | `( -- 0..63 )` | colon |
-| `joy-fire?` | `( -- flag )` | colon |
-| `joy-fire-l?` | `( -- flag )` | colon |
+- **`joy-sel-rx`** — Select right-stick X axis on the analog multiplexer (SEL1=0, SEL2=0).
+- **`joy-sel-ry`** — Select right-stick Y axis on the analog multiplexer (SEL1=1, SEL2=0).
+- **`joy-sel-lx`** — Select left-stick X axis on the analog multiplexer (SEL1=0, SEL2=1).
+- **`joy-sel-ly`** — Select left-stick Y axis on the analog multiplexer (SEL1=1, SEL2=1).
+- **`joy-bit`** — One step of the DAC successive-approximation loop: write (result|bit) to the DAC and fold the bit into result if the comparator agrees.
+- **`joy-sample`** — Run 6-bit successive approximation on the currently selected axis.
+- **`joy-x`** — Read right joystick X axis.
+- **`joy-y`** — Read right joystick Y axis.
+- **`joy-fire?`** — Check right fire button.
+- **`joy-fire-l?`** — Check left fire button.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `joy-sel-rx` | `( -- )` | colon | 24 | 243 |
+| `joy-sel-ry` | `( -- )` | colon | 24 | 243 |
+| `joy-sel-lx` | `( -- )` | colon | 24 | 243 |
+| `joy-sel-ly` | `( -- )` | colon | 24 | 243 |
+| `joy-bit` | `( result bit -- result' )` | colon | 42 | 590 |
+| `joy-sample` | `( -- 0..63 )` | colon | 36 | 3806 |
+| `joy-x` | `( -- 0..63 )` | colon | 8 | 4098 |
+| `joy-y` | `( -- 0..63 )` | colon | 8 | 4098 |
+| `joy-fire?` | `( -- flag )` | colon | 18 | 281 |
+| `joy-fire-l?` | `( -- flag )` | colon | 18 | 281 |
 
 ---
 
@@ -109,11 +133,15 @@ Data table construction helpers
 
 **Requires:** kernel primitives C!, !, @, +
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `tp` |  | var |
-| `tb` | `( byte -- )` | colon |
-| `tw` | `( word -- )` | colon |
+- **`tp`** — Variable: data write pointer. Set this to the target address before writing.
+- **`tb`** — Write one byte at tp and advance the pointer by 1.
+- **`tw`** — Write one 16-bit word (big-endian) at tp and advance by 2.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `tp` |  | var | 4 |  |
+| `tb` | `( byte -- )` | colon | 16 | 247 |
+| `tw` | `( word -- )` | colon | 16 | 249 |
 
 ---
 
@@ -125,10 +153,13 @@ Artifact-safe font for RG6 NTSC display
 
 **Requires:** kernel primitives CMOVE, font-data fc.py-injected constant: font-base
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `glyph-addr` | `( char -- addr )` | colon |
-| `init-font` | `( -- )` | colon |
+- **`glyph-addr`** — Return the address of the 7-byte glyph for the given ASCII character. Supports space, A–Z, 0–9.
+- **`init-font`** — Write the 5&times;7 bitmap font data to $6000 (259 bytes, 37 glyphs). Call once at startup.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `glyph-addr` | `( char -- addr )` | colon | 64 | 870 |
+| `init-font` | `( -- )` | colon | 1036 | 97271 |
 
 ---
 
@@ -140,10 +171,13 @@ Artifact-safe font for RG6 NTSC display
 
 **Requires:** kernel primitives C!, +, -, *, <, AND, IF/ELSE/THEN, DO/LOOP fc.py-injected constant: font-base
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `glyph-addr` | `( char -- addr )` | colon |
-| `init-font` | `( -- )` | colon |
+- **`glyph-addr`** — Return the address of the 7-byte glyph for the given ASCII character. Supports space, A–Z, 0–9.
+- **`init-font`** — Write the 5&times;7 bitmap font data to $6000 (259 bytes, 37 glyphs). Call once at startup.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `glyph-addr` | `( char -- addr )` | colon | 64 | 870 |
+| `init-font` | `( -- )` | colon | 1036 | 97271 |
 
 ---
 
@@ -155,19 +189,31 @@ FujiNet device support for the CoCo
 
 **Requires:** HDB-DOS cart at $D93F (DWRead) and $D941 (DWWrite), kernel CODE infrastructure (no Forth-level deps)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `dw-write` | `( buf len -- )` | CODE |
-| `dw-read` | `( buf len -- ok )` | CODE |
-| `FN-OP-FUJI` |  | const |
-| `FN-CMD-READY` |  | const |
-| `FN-CMD-TIME` |  | const |
-| `fn-cmd` |  | var |
-| `fn-ping` | `( -- ok )` | colon |
-| `fn-ready` | `( -- )` | colon |
-| `fn-ready/N` | `( n -- ok )` | colon |
-| `fn-time` | `( buf -- )` | colon |
-| `fn-time/N` | `( buf n -- ok )` | colon |
+- **`dw-write`** — Send len bytes from buf via HDB-DOS DWWrite. CODE word.
+- **`dw-read`** — Read len bytes into buf via HDB-DOS DWRead. ok = 1 on success, 0 on timeout. CODE word.
+- **`FN-OP-FUJI`** — DriveWire opcode prefix for FujiNet's $E2-family Fuji-device commands.
+- **`FN-CMD-READY`** — FujiNet ping / handshake command byte ($00).
+- **`FN-CMD-TIME`** — FujiNet get-wall-clock-time command byte ($23, returns 6 bytes).
+- **`fn-cmd`** — Two-byte scratch buffer for outgoing FujiNet command bytes.
+- **`fn-ping`** — Single FujiNet handshake attempt ($E2 $00, then read 1 ack byte). ok = 1 if the device answered.
+- **`fn-ready`** — Loop fn-ping until the device acks. *(has BEGIN/UNTIL loop)*
+- **`fn-ready/N`** — Bounded retry version of fn-ready; takes max attempts on the stack and returns -1 on ack or 0 on give-up. *(has BEGIN/UNTIL loop)*
+- **`fn-time`** — Hand-shakes, sends $23, reads 6 bytes into buf: year&minus;1900, month, day, hour, minute, second (UTC).
+- **`fn-time/N`** — Bounded version of fn-time; returns -1 on success (buf populated) or 0 on give-up (buf untouched).
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `dw-write` | `( buf len -- )` | CODE | 169 | 95 |
+| `dw-read` | `( buf len -- ok )` | CODE | 178 | 114 |
+| `FN-OP-FUJI` |  | const |  |  |
+| `FN-CMD-READY` |  | const |  |  |
+| `FN-CMD-TIME` |  | const |  |  |
+| `fn-cmd` |  | var | 4 |  |
+| `fn-ping` | `( -- ok )` | colon | 34 | 635 |
+| `fn-ready` | `( -- )` | colon | 10 | 750 |
+| `fn-ready/N` | `( n -- ok )` | colon | 46 | 1322 |
+| `fn-time` | `( buf -- )` | colon | 28 | 1214 |
+| `fn-time/N` | `( buf n -- ok )` | colon | 42 | 1967 |
 
 ---
 
@@ -179,25 +225,43 @@ CoCo keyboard matrix constants and utilities
 
 **Requires:** kernel primitives KBD-SCAN, AND, SWAP
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `KB-C0` |  | const |
-| `KB-C1` |  | const |
-| `KB-C2` |  | const |
-| `KB-C3` |  | const |
-| `KB-C4` |  | const |
-| `KB-C5` |  | const |
-| `KB-C6` |  | const |
-| `KB-C7` |  | const |
-| `KB-R0` |  | const |
-| `KB-R1` |  | const |
-| `KB-R2` |  | const |
-| `KB-R3` |  | const |
-| `KB-R4` |  | const |
-| `KB-R5` |  | const |
-| `KB-R6` |  | const |
-| `KB-R7` |  | const |
-| `KEY-HELD?` | `( col_mask row_bit -- flag )` | colon |
+- **`KB-C0`** — @ H P X 0 8 ENT
+- **`KB-C1`** — A I Q Y 1 9 CLR
+- **`KB-C2`** — B J R Z 2 : BRK
+- **`KB-C3`** — C K S UP 3 ; ALT
+- **`KB-C4`** — D L T DN 4 , CTL
+- **`KB-C5`** — E M U LT 5 - SHF
+- **`KB-C6`** — F N V RT 6 . F1
+- **`KB-C7`** — G O W SP 7 / F2
+- **`KB-R0`** — @ A B C D E F G
+- **`KB-R1`** — H I J K L M N O
+- **`KB-R2`** — P Q R S T U V W
+- **`KB-R3`** — X Y Z UP DN LT RT SP — all arrows share this row
+- **`KB-R4`** — 0 1 2 3 4 5 6 7 — all digits share this row
+- **`KB-R5`** — 8 9 : ; , - . /
+- **`KB-R6`** — ENT CLR BRK ALT CTL SHF F1 F2
+- **`KB-R7`** — (joystick comparator — not a keyboard row)
+- **`KEY-HELD?`** — Non-blocking key test. Returns non-zero if the specified key is currently pressed. Does not affect KEY debounce state.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `KB-C0` |  | const |  |  |
+| `KB-C1` |  | const |  |  |
+| `KB-C2` |  | const |  |  |
+| `KB-C3` |  | const |  |  |
+| `KB-C4` |  | const |  |  |
+| `KB-C5` |  | const |  |  |
+| `KB-C6` |  | const |  |  |
+| `KB-C7` |  | const |  |  |
+| `KB-R0` |  | const |  |  |
+| `KB-R1` |  | const |  |  |
+| `KB-R2` |  | const |  |  |
+| `KB-R3` |  | const |  |  |
+| `KB-R4` |  | const |  |  |
+| `KB-R5` |  | const |  |  |
+| `KB-R6` |  | const |  |  |
+| `KB-R7` |  | const |  |  |
+| `KEY-HELD?` | `( col_mask row_bit -- flag )` | colon | 10 | 175 |
 
 ---
 
@@ -209,10 +273,13 @@ number printing utilities
 
 **Requires:** kernel primitives NEGATE, ?DUP, DUP, IF, /MOD, +, EMIT, 0, <
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `u.` | `( u -- )` | colon |
-| `.` | `( n -- )` | colon |
+- **`u.`** — Print an unsigned number in decimal. Recursive digit extraction.
+- **`.`** — Print a signed number in decimal. Prints a leading - for negative values.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `u.` | `( u -- )` | colon | 26 | 400 |
+| `.` | `( n -- )` | colon | 24 | 759 |
 
 ---
 
@@ -224,9 +291,11 @@ Spatial proximity query (Manhattan-distance bitmask)
 
 **Requires:** kernel CODE infrastructure
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `prox-scan` | `( cx cy radius array count -- bitmask )` | CODE |
+- **`prox-scan`** — Proximity scan. *(loop: ~99cy/iter)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `prox-scan` | `( cx cy radius array count -- bitmask )` | CODE | 101 | 252 |
 
 ---
 
@@ -238,15 +307,23 @@ RG6 artifact-color pixel primitives
 
 **Requires:** kernel primitives, vdg.fs (set-sam-v, set-sam-f, set-pia)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `rv` |  | var |
-| `rg-init-at` | `( base -- )` | colon |
-| `rg-init` | `( -- )` | colon |
-| `rg-pcls` | `( -- )` | colon |
-| `rg-addr` | `( x y -- )` | colon |
-| `rg-pget` | `( x y -- raw )` | colon |
-| `rg-hline` | `( x1 x2 y color -- )` | colon |
+- **`rv`** — VRAM base address for the active RG6 framebuffer; set by rg-init-at.
+- **`rg-init-at`** — Point the VDG at the given $0200-aligned VRAM base, set up shift/mask tables, and clear 6K of pixel memory. (rg-init wraps this with the kernel's default vram-base.)
+- **`rg-init`** — Switch to RG6 mode, build lookup tables, clear screen to black. Call once at startup.
+- **`rg-pcls`** — Clear entire screen to black.
+- **`rg-addr`** — Compute the byte address and intra-byte shift for pixel (x,y) in the active framebuffer; stores results in _pa (addr) and _ps (shift index).
+- **`rg-pget`** — Read the raw 2-bit value at an artifact pixel.
+- **`rg-hline`** — Horizontal line from x1 to x2 (inclusive) at row y. *(has DO/LOOP)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `rv` |  | var | 4 |  |
+| `rg-init-at` | `( base -- )` | colon | 54 | 4685 |
+| `rg-init` | `( -- )` | colon | 10 | 4765 |
+| `rg-pcls` | `( -- )` | colon | 16 | 240 |
+| `rg-addr` | `( x y -- )` | colon | 38 | 697 |
+| `rg-pget` | `( x y -- raw )` | colon | 30 | 1138 |
+| `rg-hline` | `( x1 x2 y color -- )` | colon | 36 | 607 |
 
 ---
 
@@ -258,12 +335,17 @@ RG mode text rendering (1 bit/pixel)
 
 **Requires:** glyph-addr (from font5x7.fs)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `cv` |  | var |
-| `cb` |  | var |
-| `rg-char` | `( char cx cy -- )` | colon |
-| `rg-type` | `( addr len cx cy -- )` | colon |
+- **`cv`** — Variable: VRAM base address for text rendering. Set before calling any text rendering word.
+- **`cb`** — Variable: bytes per row for the current display mode.
+- **`rg-char`** — Render a character at column cx, row cy in an RG mode (1 bit per pixel). *(has DO/LOOP)*
+- **`rg-type`** — Render a counted string at character cell (cx,cy) using the active RG6 framebuffer and the current cv/cb foreground/background colours. *(has DO/LOOP)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `cv` |  | var | 4 |  |
+| `cb` |  | var | 4 |  |
+| `rg-char` | `( char cx cy -- )` | colon | 70 | 2195 |
+| `rg-type` | `( addr len cx cy -- )` | colon | 44 | 2914 |
 
 ---
 
@@ -275,9 +357,11 @@ compatibility shim
 
 **Requires:** kvar-seed (kernel-exposed VAR_SEED address)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `seed` | `( -- addr )` | colon |
+- **`seed`** — Address of VAR_SEED — the kernel's RNG state. Initialize to any non-zero value for a different sequence.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `seed` | `( -- addr )` | colon | 8 | 80 |
 
 ---
 
@@ -289,10 +373,13 @@ VDG screen utilities and vsync
 
 **Requires:** kernel primitives (vsync, wait-past-row, count-blanking are now kernel CODE words; cls-black/cls-green are Forth)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `cls-black` | `( -- )` | colon |
-| `cls-green` | `( -- )` | colon |
+- **`cls-black`** — Clear the screen to solid black (SG4 block character $80). *(has DO/LOOP)*
+- **`cls-green`** — Clear the screen to green (VDG space character $60) and move cursor to 0,0. *(has DO/LOOP)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `cls-black` | `( -- )` | colon | 30 | 444 |
+| `cls-green` | `( -- )` | colon | 36 | 557 |
 
 ---
 
@@ -304,10 +391,13 @@ SG6 mode text rendering (block-pixel font)
 
 **Requires:** glyph-addr (from font5x7.fs), cv (from rg-text.fs), kernel primitives AND, IF, ELSE, THEN, DUP, +, @, !, C@, C!, DO, LOOP, I, DROP
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `sg6-row` | `( font-byte -- )` | colon |
-| `sg6-char` | `( char cx cy -- )` | colon |
+- **`sg6-row`** — Render one row of a font glyph as 5 SG6 block characters. $BF for on, $80 for off. *(has DO/LOOP)*
+- **`sg6-char`** — Render a character at column cx, row cy in SG6 mode. Characters are 5 cells wide &times; 7 rows tall. *(has DO/LOOP)*
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `sg6-row` | `( font-byte -- )` | colon | 70 | 978 |
+| `sg6-char` | `( char cx cy -- )` | colon | 54 | 2735 |
 
 ---
 
@@ -319,21 +409,35 @@ DAC sound library for the CoCo
 
 **Requires:** kernel primitives rng + kvar-seed (for snd-noise), lib/trig.fs init-sin populating trig-base (for snd-sin)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `snd-init` | `( -- )` | CODE |
-| `snd-tone` | `( pitch duration -- )` | CODE |
-| `snd-saw` | `( step pitch duration -- )` | CODE |
-| `snd-tri` | `( pitch duration -- )` | colon |
-| `snd-sin` | `( pitch duration -- )` | CODE |
-| `snd-noise` | `( delay duration -- )` | colon |
-| `snd-beep` | `( -- )` | colon |
-| `snd-zap` | `( -- )` | colon |
-| `snd-boom` | `( -- )` | colon |
-| `snd-pause` | `( count -- )` | colon |
-| `snd-chirp` | `( -- )` | colon |
-| `snd-dock` | `( -- )` | colon |
-| `snd-hit` | `( -- )` | colon |
+- **`snd-init`** — Configure PIAs for DAC output (called automatically by snd-tone et al.). CODE word.
+- **`snd-tone`** — Square wave: pitch = inter-toggle delay (lower = higher frequency); duration = toggle-cycle count. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~46cy/iter)*
+- **`snd-saw`** — Sawtooth wave: each sample, the DAC value advances by step (positive = rising, $FC = falling). CODE word. *(loop: ~7cy/iter, loop: ~43cy/iter)*
+- **`snd-tri`** — Triangle wave: ramp up then ramp down (built from snd-saw).
+- **`snd-sin`** — Sine wave via the kernel sin table (requires init-sin); duration = number of half-waves. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~126cy/iter)*
+- **`snd-noise`** — White-noise burst: delay = inter-sample wait (lower = higher-pitched hiss); duration = sample count. *(has DO/LOOP, has DO/LOOP)*
+- **`snd-beep`** — Short beep.
+- **`snd-zap`** — Linear pitch sweep 10..120 with short bursts; sounds like a laser zap.
+- **`snd-boom`** — Explosion noise burst.
+- **`snd-pause`** — Brief silent gap; busy-loops `count` iterations (~6 cy each at 0.89 MHz ≈ 6.7µs) with the DAC held at 0 by the previous snd-tone call. *(has DO/LOOP)*
+- **`snd-chirp`** — Three identical high blips in quick succession — like a bird chirp.
+- **`snd-dock`** — Two-tone &ldquo;dock&rdquo; effect.
+- **`snd-hit`** — Quick hit / impact tick.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `snd-init` | `( -- )` | CODE | 23 | 39 |
+| `snd-tone` | `( pitch duration -- )` | CODE | 60 | 114 |
+| `snd-saw` | `( step pitch duration -- )` | CODE | 59 | 124 |
+| `snd-tri` | `( pitch duration -- )` | colon | 24 | 614 |
+| `snd-sin` | `( pitch duration -- )` | CODE | 107 | 208 |
+| `snd-noise` | `( delay duration -- )` | colon | 52 | 843 |
+| `snd-beep` | `( -- )` | colon | 14 | 225 |
+| `snd-zap` | `( -- )` | colon | 26 | 392 |
+| `snd-boom` | `( -- )` | colon | 14 | 954 |
+| `snd-pause` | `( count -- )` | colon | 12 | 245 |
+| `snd-chirp` | `( -- )` | colon | 46 | 1129 |
+| `snd-dock` | `( -- )` | colon | 24 | 401 |
+| `snd-hit` | `( -- )` | colon | 14 | 225 |
 
 ---
 
@@ -343,10 +447,13 @@ Software sprite library for RG6 artifact-color mode
 
 **Provides:** spr-w, spr-h (field accessors) spr-draw, spr-erase-box (kernel primitives)
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `spr-w` | `( addr -- width )` | colon |
-| `spr-h` | `( addr -- height )` | colon |
+- **`spr-w`** — Get sprite width from header.
+- **`spr-h`** — Get sprite height from header.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `spr-w` | `( addr -- width )` | colon | 6 | 81 |
+| `spr-h` | `( addr -- height )` | colon | 10 | 148 |
 
 ---
 
@@ -358,13 +465,19 @@ Sine/cosine lookup table for angle-based operations
 
 **Requires:** kernel primitives C@, *, +, -, /MOD, NEGATE, RSHIFT, CMOVE, sin-data, DUP, DROP, SWAP, OVER, @, !, <, >, 0=, IF, ELSE, THEN
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `init-sin` | `( -- )` | colon |
-| `sin` | `( angle -- value )` | colon |
-| `cos` | `( angle -- value )` | colon |
-| `angle-dx` | `( angle length -- dx )` | colon |
-| `angle-dy` | `( angle length -- dy )` | colon |
+- **`init-sin`** — Copy the kernel's sin-data (91 bytes) into trig-base via CMOVE.
+- **`sin`** — Sine of angle (0–360&deg;). Returns &minus;127 to +127.
+- **`cos`** — Cosine of angle (0–360&deg;). Returns &minus;127 to +127.
+- **`angle-dx`** — X displacement: length &times; cos(angle) / 128.
+- **`angle-dy`** — Y displacement: &minus;length &times; sin(angle) / 128. Negative = up on screen.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `init-sin` | `( -- )` | colon | 16 | 207 |
+| `sin` | `( angle -- value )` | colon | 140 | 1889 |
+| `cos` | `( angle -- value )` | colon | 12 | 2005 |
+| `angle-dx` | `( angle length -- dx )` | colon | 18 | 2824 |
+| `angle-dy` | `( angle length -- dy )` | colon | 20 | 2741 |
 
 ---
 
@@ -376,11 +489,16 @@ VDG/SAM display mode switching library
 
 **Requires:** kernel primitives C@, C!, AND, OR, RSHIFT, DUP, DROP, IF/ELSE/THEN
 
-| Word | Stack | Kind |
-|------|-------|------|
-| `set-sam-v` | `( v -- )` | colon |
-| `set-sam-f` | `( offset -- )` | colon |
-| `set-pia` | `( bits -- )` | colon |
-| `reset-text` | `( -- )` | colon |
+- **`set-sam-v`** — Set SAM display mode bits V0–V2 (0–7). Controls the VDG display type. *(has DO/LOOP)*
+- **`set-sam-f`** — Set SAM display offset bits F0–F6 (0–127). Display start address = offset &times; 512. Default is 2 ($0400). *(has DO/LOOP)*
+- **`set-pia`** — Set PIA1 $FF22 bits 7–3 (A*/G, GM2, GM1, GM0, CSS). Preserves bits 2–0.
+- **`reset-text`** — Restore default alpha/SG4 text mode. SAM V=000, offset=2 ($0400), PIA bits cleared.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `set-sam-v` | `( v -- )` | colon | 58 | 978 |
+| `set-sam-f` | `( offset -- )` | colon | 60 | 978 |
+| `set-pia` | `( bits -- )` | colon | 24 | 287 |
+| `reset-text` | `( -- )` | colon | 16 | 2385 |
 
 ---

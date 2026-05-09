@@ -40,6 +40,7 @@ VARIABLE cb                       \ cached bytes per row
 VARIABLE _rt-x                     \ start column captured at entry
 VARIABLE _rt-y                     \ start row captured at entry
 
+\ rg-type — Render a counted string at character cell (cx,cy) using the active RG6 framebuffer and the current cv/cb foreground/background colours.
 : rg-type  ( addr len cx cy -- )
   _rt-y !  _rt-x !
   0 DO

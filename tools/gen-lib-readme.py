@@ -13,12 +13,33 @@ Writes a single combined Markdown file with a TOC and one section per
 library file.
 """
 
+import json
 import re
 import sys
 from pathlib import Path
 
-LIB_DIR = Path(__file__).parent.parent / "lib"
-OUT_PATH = LIB_DIR / "README.md"
+ROOT      = Path(__file__).parent.parent
+LIB_DIR   = ROOT / "lib"
+OUT_PATH  = LIB_DIR / "README.md"
+METRICS   = ROOT / "build" / "lib-metrics.json"
+REFERENCE = ROOT / "reference.html"
+
+# `\ word — short description.`  Em-dash (U+2014) or whitespace-isolated `--`.
+# Name starts with a letter/digit so we skip box-drawing divider lines like
+# `\ ── snd-zap ( ... ) ──────`.
+DESC_RE = re.compile(
+    r"^\s*\\\s+([A-Za-z0-9][\w\-/?!.]*)\s+(?:—|--)\s+(\S.*?)\s*$"
+)
+
+# reference.html row: <td class="word-name">N</td><td...>STACK or VALUE</td><td>DESC</td>
+# The middle cell is `class="stack-effect"` for words, or unclassed `<code>$XX</code>`
+# for constants — accept either.
+HTML_ROW_RE = re.compile(
+    r'<td class="word-name">([^<]+)</td>\s*'
+    r'<td[^>]*>.*?</td>\s*'
+    r'<td>(.*?)</td>',
+    re.DOTALL,
+)
 
 DEFN_RE = re.compile(r"^(:|CODE|KCODE|VARIABLE)\s+(\S+)(.*)?$")
 # Forth's CONSTANT is postfix: `<value> CONSTANT <name>`. Match anywhere on a line.
@@ -177,8 +198,153 @@ def slug(filename):
     return s
 
 
+def normalise_desc(s):
+    """Compare descriptions ignoring whitespace + trailing punctuation."""
+    return re.sub(r"\s+", " ", s.strip()).rstrip(".!? ").lower()
+
+
+def scan_source_descriptions(path, defined_names):
+    """Return {lower_name: description} for every `\\ name — desc` line in `path`
+    where `name` matches a word actually defined in this file.
+
+    Lines containing a stack-effect comment (`( a -- b )`) are skipped — the
+    `--` there is not a description separator.
+    """
+    out = {}
+    for line in path.read_text().splitlines():
+        if "(" in line and "--" in line:
+            continue
+        m = DESC_RE.match(line)
+        if not m:
+            continue
+        name = m.group(1).lower()
+        if name in defined_names:
+            out[name] = m.group(2).strip()
+    return out
+
+
+def parse_reference_html():
+    """Parse reference.html → {lower_name: description}.
+
+    Strips inline tags to plain text; truncates very long descriptions to
+    their first sentence (full prose stays in the HTML reference itself).
+    """
+    if not REFERENCE.exists():
+        return {}
+    out = {}
+    text = REFERENCE.read_text()
+    for m in HTML_ROW_RE.finditer(text):
+        name = m.group(1).strip().lower()
+        desc = re.sub(r"<[^>]+>", "", m.group(2))
+        # Collapse whitespace and decode the few HTML entities the reference uses.
+        desc = re.sub(r"\s+", " ", desc).strip()
+        desc = (desc.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                    .replace("&mdash;", "—").replace("&ndash;", "–")
+                    .replace("&hellip;", "…").replace("&nbsp;", " ")
+                    .replace("&quot;", '"').replace("&#39;", "'"))
+        if len(desc) > 120:
+            cut = desc.find(". ")
+            if 0 < cut <= 120:
+                desc = desc[:cut + 1]
+            else:
+                desc = desc[:117].rstrip() + "..."
+        out[name] = desc
+    return out
+
+
+def load_descriptions(files_and_words):
+    """Build {lower_name: (description, source)} for every public lib word.
+
+    `files_and_words` is a list of `(Path, [(name, ...)])` tuples — one per lib
+    file. Source comments (`\\ name — desc`) take precedence over reference.html.
+
+    Returns (descriptions, drift_warnings, missing) where:
+      - drift_warnings: list of (name, source_desc, ref_desc) for words where
+        the two sources disagree (after whitespace/punctuation normalisation).
+      - missing: list of word names with no description from either source.
+    """
+    descriptions = {}
+    for path, words in files_and_words:
+        defined = {n.lower() for (n, _stack, _kind) in words}
+        for name, desc in scan_source_descriptions(path, defined).items():
+            descriptions[name] = (desc, "source")
+
+    ref = parse_reference_html()
+    drift = []
+    for name, ref_desc in ref.items():
+        if name in descriptions:
+            src_desc, _ = descriptions[name]
+            if normalise_desc(src_desc) != normalise_desc(ref_desc):
+                drift.append((name, src_desc, ref_desc))
+        else:
+            descriptions[name] = (ref_desc, "reference.html")
+
+    # Missing = any defined word with no description from either source.
+    all_defined = set()
+    for _, words in files_and_words:
+        for name, _stack, _kind in words:
+            all_defined.add(name.lower())
+    missing = sorted(n for n in all_defined if n not in descriptions)
+    return descriptions, drift, missing
+
+
+def load_metrics():
+    """Load build/lib-metrics.json and return a flat {lower(word): entry} map.
+
+    Returns empty dict (with a warning) if the file is missing — callers
+    should still produce a valid README without bytes/cycles columns.
+    """
+    if not METRICS.exists():
+        print(f"  warning: {METRICS.relative_to(ROOT)} missing — "
+              f"run `make lib-readme` (which builds it) for byte/cycle columns.",
+              file=sys.stderr)
+        return {}
+    data = json.loads(METRICS.read_text())
+    flat = {}
+    for section in ("forth_words", "code_words", "kcode_words", "variables"):
+        for k, v in data.get(section, {}).items():
+            flat[k.lower()] = v
+    return flat
+
+
+def fmt_cycles(entry):
+    """Format a metrics entry's cycle range. ('' if entry has no cycle data)."""
+    if "cy_min" not in entry:
+        return ""
+    cmin, cmax = entry["cy_min"], entry["cy_max"]
+    if cmin == 0 and cmax == 0:
+        return ""
+    return f"{cmin}" if cmin == cmax else f"{cmin}-{cmax}"
+
+
+def fmt_notes(entry):
+    return ", ".join(entry.get("notes", []) or [])
+
+
 def render():
     files = sorted(LIB_DIR.glob("*.fs"))
+    metrics = load_metrics()
+    parsed = [(f, parse_file(f)) for f in files]
+    files_and_words = [(f, parsed_data[3]) for f, parsed_data in parsed]
+    descriptions, drift, missing = load_descriptions(files_and_words)
+
+    if drift:
+        print(f"  warning: {len(drift)} word(s) where source comment differs from reference.html:",
+              file=sys.stderr)
+        for name, src, ref in drift:
+            print(f"    {name}", file=sys.stderr)
+            print(f"      source:          {src}", file=sys.stderr)
+            print(f"      reference.html: {ref}", file=sys.stderr)
+        print("    (source wins; update reference.html to match, or fix the source comment)",
+              file=sys.stderr)
+
+    if missing:
+        print(f"  note: {len(missing)} word(s) without descriptions:",
+              file=sys.stderr)
+        for chunk_start in range(0, len(missing), 8):
+            print("    " + ", ".join(missing[chunk_start:chunk_start + 8]), file=sys.stderr)
+        print("    (add `\\ name — short description` near the definition, "
+              "or document in reference.html)", file=sys.stderr)
     out = []
     out.append("# `lib/` — Shared Forth Libraries")
     out.append("")
@@ -192,6 +358,15 @@ def render():
         "Each table lists the public words from one file. Words whose "
         "names begin with `_` are treated as private and omitted.")
     out.append("")
+    out.append(
+        "Each file shows a description list (what each word does) followed by "
+        "a cost table (stack effect, kind, bytes, cycles). Descriptions are "
+        "sourced from a `\\ name — short description` comment placed within "
+        "six lines of the word's definition (preferred), falling back to "
+        "`reference.html` for words documented there. When both exist "
+        "and disagree, the source comment wins and the generator emits a "
+        "docs-drift warning.")
+    out.append("")
     out.append("---")
     out.append("")
     out.append("## Files")
@@ -202,8 +377,7 @@ def render():
     out.append("---")
     out.append("")
 
-    for f in files:
-        short, provides, requires, words = parse_file(f)
+    for f, (short, provides, requires, words) in parsed:
         out.append(f"## `{f.name}`")
         out.append("")
         if short:
@@ -216,11 +390,27 @@ def render():
             out.append(f"**Requires:** {', '.join(requires)}")
             out.append("")
         if words:
-            out.append("| Word | Stack | Kind |")
-            out.append("|------|-------|------|")
+            # Description list first — what each word does, plus any flow-control notes.
+            for name, _stack, _kind in words:
+                desc, _src = descriptions.get(name.lower(), ("", ""))
+                notes = fmt_notes(metrics.get(name.lower(), {}))
+                bits = []
+                if desc:
+                    bits.append(desc)
+                if notes:
+                    bits.append(f"*({notes})*")
+                tail = " — " + " ".join(bits) if bits else ""
+                out.append(f"- **`{name}`**{tail}")
+            out.append("")
+            # Cost table second — narrow, scannable for size/speed comparisons.
+            out.append("| Word | Stack | Kind | Bytes | Cycles |")
+            out.append("|------|-------|------|-------|--------|")
             for name, stack, kind in words:
                 stack_md = f"`{stack}`" if stack else ""
-                out.append(f"| `{name}` | {stack_md} | {kind} |")
+                entry = metrics.get(name.lower(), {})
+                size = entry.get("bytes", "")
+                cycles = fmt_cycles(entry)
+                out.append(f"| `{name}` | {stack_md} | {kind} | {size} | {cycles} |")
             out.append("")
         else:
             out.append("*No public words.*")

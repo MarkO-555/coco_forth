@@ -97,4 +97,4 @@ Renovating the tooling layer of a functioning vintage platform preserves authent
 ---
 
 *A separate hardware re-envisioning project (F18A FPGA video, CEM3394 analog synth,
-RP2350 co-processor) is documented in `docs/future-hardware.md`.*
+RP2350 co-processor) is documented in `proposals/future-hardware.md`.*

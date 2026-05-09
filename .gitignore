@@ -1,9 +1,10 @@
-# Build output (kernel intermediates only; demo .bin and DSK are tracked)
-forth/kernel/build/
+# Build output (kernel intermediates and root build/; demo .bin and DSK are tracked)
+kernel/build/
+build/
 
 # Extracted text from PDF (large, reproducible)
-coco_technical_reference.txt
-coco_technical_reference.pdf
+coco-guides/coco_technical_reference.txt
+coco-guides/coco_technical_reference.pdf
 
 # macOS
 .DS_Store

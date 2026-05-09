@@ -181,12 +181,14 @@ VARIABLE _noise-delay
 \ Smooth descending laser zap.  Steps the pitch from 10 to ~120 in
 \ small increments, playing a very short burst at each level.  Linear
 \ pitch increment gives an exponential frequency drop (musical).
+\ snd-zap — Linear pitch sweep 10..120 with short bursts; sounds like a laser zap.
 : snd-zap    ( -- )
   120 10 DO  I 1 snd-tone  3 +LOOP ;
 : snd-boom   ( -- )  60 500 snd-noise ;     \ slow rate → low rumble
 \ Brief silent pause — DAC stays at 0 between snd-tone calls because
 \ snd-tone's last write is CLR $FF20.  Caller passes an iteration
 \ count; ~6 cycles per iter at 0.89 MHz = ~6.7us each.
+\ snd-pause — Brief silent gap; busy-loops `count` iterations (~6 cy each at 0.89 MHz ≈ 6.7µs) with the DAC held at 0 by the previous snd-tone call.
 : snd-pause  ( count -- )  0 DO LOOP ;
 
 \ Three identical high blips in quick succession — like a bird chirp.

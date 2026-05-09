@@ -128,7 +128,7 @@ mind (e.g. binary layouts that work for cart delivery).
 - Every new feature gets a tracking issue in `issues.jsonl` BEFORE work starts
 - Every code change ships with verification (XRoar capture or hardware run)
 - Demos must work without optional peripherals (FujiNet, joystick, etc.) — graceful fallback or clear error message
-- Doc and reference (`docs/reference.html`) updated alongside code, not as a follow-up
+- Doc and reference (`reference.html`) updated alongside code, not as a follow-up
 
 ---
 

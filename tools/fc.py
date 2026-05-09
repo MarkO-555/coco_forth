@@ -29,6 +29,7 @@ Known limitations:
 """
 
 import argparse
+import json
 import re
 import struct
 import subprocess
@@ -840,6 +841,26 @@ def item_size(item):
     return 2                             # word reference: CFA address
 
 
+# Set of literal values that compress to a 2-byte CFA_LITn cell when those
+# kernel primitives are present.  Mirrors the LIT_PRIMS table in compile_forth.
+def small_lit_values(symbols):
+    return {v for v, s in (
+        (0, 'CFA_LIT0'), (1, 'CFA_LIT1'), (2, 'CFA_LIT2'),
+        (3, 'CFA_LIT3'), (4, 'CFA_LIT4'), (-1, 'CFA_LITM1'),
+    ) if s in symbols}
+
+
+def colon_word_size(items, small_lits):
+    """Bytes emitted for a colon definition: DOCOL + body + EXIT."""
+    total = 2 + 2  # DOCOL cell + EXIT cell
+    for it in items:
+        if it[0] == 'lit' and it[1] in small_lits:
+            total += 2
+        else:
+            total += item_size(it)
+    return total
+
+
 def compile_forth(definitions, variables, main_thread, code_definitions,
                   symbols, app_base, hole_start=None, hole_end=None,
                   kcode_cfas=None, data_blocks=None):
@@ -1640,27 +1661,33 @@ def analyze_forth_words(definitions, kernel_costs, code_word_costs, variables=No
 
 # ── Cycle report ─────────────────────────────────────────────────────────────
 
-def cycle_report(definitions, code_definitions, variables, kernel_map_path):
-    """Print per-word cycle cost report."""
-    # Derive kernel.asm path from kernel.map path
-    kernel_asm_path = str(Path(kernel_map_path).parent.parent / 'kernel.asm')
+def compute_cycle_metrics(definitions, code_definitions, variables, kernel_map_path):
+    """Run the full cycle pipeline and return (kernel_costs, code_costs, user_costs).
 
-    # Step 1: Analyze kernel primitives
+    Each entry maps name → (cy_min, cy_max[, notes]).  Returns (None, None, None)
+    if kernel.asm is unavailable.
+    """
+    kernel_asm_path = str(Path(kernel_map_path).parent.parent / 'kernel.asm')
     kernel_costs = analyze_kernel_primitives(kernel_asm_path)
     if not kernel_costs:
+        return None, None, None
+    code_word_costs = {name: analyze_code_word(name, asm_text)
+                       for name, asm_text in code_definitions.items()}
+    user_costs = analyze_forth_words(definitions, kernel_costs, code_word_costs,
+                                      variables=variables)
+    return kernel_costs, code_word_costs, user_costs
+
+
+def cycle_report(definitions, code_definitions, variables, kernel_map_path):
+    """Print per-word cycle cost report."""
+    kernel_costs, code_word_costs, user_costs = compute_cycle_metrics(
+        definitions, code_definitions, variables, kernel_map_path)
+    if kernel_costs is None:
+        kernel_asm_path = str(Path(kernel_map_path).parent.parent / 'kernel.asm')
         print(f"\n  warning: could not read {kernel_asm_path}, skipping cycle report")
         return
 
-    # Step 2: Analyze user CODE words
-    code_word_costs = {}
-    for name, asm_text in code_definitions.items():
-        code_word_costs[name] = analyze_code_word(name, asm_text)
-
-    # Step 3: Analyze user Forth words
-    user_costs = analyze_forth_words(definitions, kernel_costs, code_word_costs,
-                                      variables=variables)
-
-    # Step 4: Print report
+    # Print report
     docol = kernel_costs.get('DOCOL', (0, 0))
     exit_ = kernel_costs.get('exit', (0, 0))
     next_cy = instruction_cycles('LDY', ',X++')[0] + instruction_cycles('JMP', '[,Y]')[0]
@@ -1707,6 +1734,87 @@ def cycle_report(definitions, code_definitions, variables, kernel_map_path):
                 print(f"  {name:<24s} {cmin:>5d}-{cmax}cy{note_str}")
 
 
+# ── Metrics JSON ──────────────────────────────────────────────────────────────
+
+def write_metrics_json(out_path, definitions, code_definitions, kcode_definitions,
+                       variables, symbols, kernel_map_path):
+    """Emit per-word {bytes, cy_min, cy_max, notes} for every defined word.
+
+    Used by `tools/gen-lib-metrics.py` to feed the lib/README.md generator.
+    """
+    kernel_costs, code_word_costs, user_costs = compute_cycle_metrics(
+        definitions, code_definitions, variables, kernel_map_path)
+    if kernel_costs is None:
+        kernel_asm_path = str(Path(kernel_map_path).parent.parent / 'kernel.asm')
+        print(f"  warning: could not read {kernel_asm_path}, metrics JSON will lack cycle data")
+        kernel_costs, code_word_costs, user_costs = {}, {}, {}
+
+    # Byte sizes
+    small_lits = small_lit_values(symbols)
+    forth_sizes = {n: colon_word_size(items, small_lits)
+                   for n, items in definitions.items()}
+
+    # CODE word sizes: re-assemble (cheap) to read the per-word machine-code length.
+    # Each CODE word is laid out as: 2-byte CFA cell + machine code.
+    code_sizes = {}
+    if code_definitions:
+        try:
+            code_bytes = assemble_code_words(code_definitions, symbols)
+            code_sizes = {n: 2 + len(b) for n, b in code_bytes.items()}
+        except Exception as e:
+            print(f"  warning: CODE word size pass failed: {e}")
+
+    # KCODE word sizes: derived from CFA addresses.  KCODE blocks are emitted
+    # contiguously starting at KERN_END, each = 2-byte CFA + machine code.
+    kcode_sizes = {}
+    if kcode_definitions:
+        try:
+            kern_end = symbols.get('KERN_END', 0xEDB0)
+            dummy_vars = {n: 0x4000 + i * 4 for i, n in enumerate(variables)}
+            kbytes, kcfas = assemble_kcode_words(kcode_definitions, symbols,
+                                                  dummy_vars, kern_end)
+            ordered = sorted(kcfas.items(), key=lambda kv: kv[1])
+            blob_end = kern_end + len(kbytes)
+            for i, (name, cfa) in enumerate(ordered):
+                next_addr = ordered[i+1][1] if i+1 < len(ordered) else blob_end
+                kcode_sizes[name] = next_addr - cfa
+        except Exception as e:
+            print(f"  warning: KCODE word size pass failed: {e}")
+
+    def cy_entry(costs, name, size):
+        cmin, cmax, *rest = costs.get(name, (0, 0, []))
+        notes = rest[0] if rest else []
+        out = {'cy_min': cmin, 'cy_max': cmax, 'notes': notes}
+        if size is not None:
+            out['bytes'] = size
+        return out
+
+    metrics = {
+        'kernel_primitives': {
+            n: {'cy_min': mn, 'cy_max': mx}
+            for n, (mn, mx) in kernel_costs.items()
+        },
+        'forth_words': {
+            n: cy_entry(user_costs, n, forth_sizes.get(n))
+            for n in definitions
+        },
+        'code_words': {
+            n: cy_entry(code_word_costs, n, code_sizes.get(n))
+            for n in code_definitions
+        },
+        'kcode_words': {
+            n: {'bytes': kcode_sizes.get(n)}
+            for n in kcode_definitions
+        },
+        'variables': {n: {'bytes': 4} for n in variables},
+    }
+
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text(json.dumps(metrics, indent=2))
+    print(f"metrics → {out_path}  ({len(definitions)} forth, {len(code_definitions)} CODE, "
+          f"{len(kcode_definitions)} KCODE, {len(variables)} vars)")
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
@@ -1729,6 +1837,8 @@ def main():
                              'from coco kernel size churn.')
     parser.add_argument('--cycles',        action='store_true',
                         help='print per-word 6809 cycle cost estimates')
+    parser.add_argument('--metrics-json',  default=None,
+                        help='write per-word {bytes, cy_min, cy_max, notes} JSON to PATH')
     args = parser.parse_args()
 
     out_file = args.output or str(Path(args.source).with_suffix('.bin'))
@@ -1993,6 +2103,10 @@ def main():
 
     if args.cycles:
         cycle_report(defs, code_defs, variables, args.kernel)
+
+    if args.metrics_json:
+        write_metrics_json(args.metrics_json, defs, code_defs, kcode_defs,
+                           variables, symbols, args.kernel)
 
 
 if __name__ == '__main__':

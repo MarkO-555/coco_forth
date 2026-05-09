@@ -26,10 +26,17 @@ demos: kernel
 
 # Regenerate lib/README.md from lib/*.fs source headers and definitions.
 # Auto-runs as part of `make all`. Run by hand with `make lib-readme`.
+# build/lib-metrics.json supplies per-word byte sizes and cycle costs.
 lib-readme: lib/README.md
 
-lib/README.md: tools/gen-lib-readme.py $(wildcard lib/*.fs)
+lib/README.md: tools/gen-lib-readme.py build/lib-metrics.json reference.html $(wildcard lib/*.fs)
 	@python3 tools/gen-lib-readme.py
+
+build/lib-metrics.json: tools/gen-lib-metrics.py tools/fc.py kernel/build/kernel.map $(wildcard lib/*.fs)
+	@python3 tools/gen-lib-metrics.py
+
+kernel/build/kernel.map:
+	$(MAKE) -C $(KERNEL)
 
 # Create a DECB disk image with all demos.
 # Requires Toolshed's 'decb' command.
@@ -62,7 +69,7 @@ dsk: demos
 	@echo "  In DECB:  LOADM\"BOUNCE\":EXEC"
 
 # Create a DECB disk image with the 12 tutorial example programs.
-# Uses the pre-built .bin files committed under docs/examples/.
+# Uses the pre-built .bin files committed under tutorials/.
 # Requires Toolshed's 'decb' command.
 tutorial-dsk:
 	@command -v decb >/dev/null 2>&1 || { \
@@ -77,18 +84,18 @@ tutorial-dsk:
 	}
 	@mkdir -p build
 	decb dskini $(TUTORIAL_DSK)
-	decb copy docs/examples/01/hello.bin    $(TUTORIAL_DSK),HELLO.BIN -2
-	decb copy docs/examples/02/title.bin    $(TUTORIAL_DSK),TITLE.BIN -2
-	decb copy docs/examples/03/letter.bin   $(TUTORIAL_DSK),LETTER.BIN -2
-	decb copy docs/examples/04/mirror.bin   $(TUTORIAL_DSK),MIRROR.BIN -2
-	decb copy docs/examples/05/hi.bin       $(TUTORIAL_DSK),HI.BIN -2
-	decb copy docs/examples/06/alpha.bin    $(TUTORIAL_DSK),ALPHA.BIN -2
-	decb copy docs/examples/07/grade.bin    $(TUTORIAL_DSK),GRADE.BIN -2
-	decb copy docs/examples/08/yorn.bin     $(TUTORIAL_DSK),YORN.BIN -2
-	decb copy docs/examples/09/arith.bin    $(TUTORIAL_DSK),ARITH.BIN -2
-	decb copy docs/examples/10/calc.bin     $(TUTORIAL_DSK),CALC.BIN -2
-	decb copy docs/examples/11/screen.bin   $(TUTORIAL_DSK),SCREEN.BIN -2
-	decb copy docs/examples/12/guess.bin    $(TUTORIAL_DSK),GUESS.BIN -2
+	decb copy tutorials/01-meet-your-stack/examples/hello.bin    $(TUTORIAL_DSK),HELLO.BIN -2
+	decb copy tutorials/02-say-something/examples/title.bin    $(TUTORIAL_DSK),TITLE.BIN -2
+	decb copy tutorials/03-make-your-own-words/examples/letter.bin   $(TUTORIAL_DSK),LETTER.BIN -2
+	decb copy tutorials/04-stack-is-your-friend/examples/mirror.bin   $(TUTORIAL_DSK),MIRROR.BIN -2
+	decb copy tutorials/05-remember-things/examples/hi.bin       $(TUTORIAL_DSK),HI.BIN -2
+	decb copy tutorials/06-count-and-loop/examples/alpha.bin    $(TUTORIAL_DSK),ALPHA.BIN -2
+	decb copy tutorials/07-decisions/examples/grade.bin    $(TUTORIAL_DSK),GRADE.BIN -2
+	decb copy tutorials/08-read-the-keyboard/examples/yorn.bin     $(TUTORIAL_DSK),YORN.BIN -2
+	decb copy tutorials/09-numbers/examples/arith.bin    $(TUTORIAL_DSK),ARITH.BIN -2
+	decb copy tutorials/10-calculator/examples/calc.bin     $(TUTORIAL_DSK),CALC.BIN -2
+	decb copy tutorials/11-anywhere-on-screen/examples/screen.bin   $(TUTORIAL_DSK),SCREEN.BIN -2
+	decb copy tutorials/12-the-guessing-game/examples/guess.bin    $(TUTORIAL_DSK),GUESS.BIN -2
 	@echo ""
 	@echo "  $(TUTORIAL_DSK) created with 12 programs (tutorial chapters 1-12)."
 	@echo "  Copy to SD card for FujiNet, or load in XRoar."

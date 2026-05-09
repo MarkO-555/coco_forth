@@ -26,13 +26,18 @@
 
 \ ── Axis selection ───────────────────────────────────────────────
 
+\ joy-sel-rx — Select right-stick X axis on the analog multiplexer (SEL1=0, SEL2=0).
 : joy-sel-rx  ( -- )  $34 $FF01 C!  $34 $FF03 C! ;
+\ joy-sel-ry — Select right-stick Y axis on the analog multiplexer (SEL1=1, SEL2=0).
 : joy-sel-ry  ( -- )  $3C $FF01 C!  $34 $FF03 C! ;
+\ joy-sel-lx — Select left-stick X axis on the analog multiplexer (SEL1=0, SEL2=1).
 : joy-sel-lx  ( -- )  $34 $FF01 C!  $3C $FF03 C! ;
+\ joy-sel-ly — Select left-stick Y axis on the analog multiplexer (SEL1=1, SEL2=1).
 : joy-sel-ly  ( -- )  $3C $FF01 C!  $3C $FF03 C! ;
 
 \ ── Successive approximation ─────────────────────────────────────
 
+\ joy-bit — One step of the DAC successive-approximation loop: write (result|bit) to the DAC and fold the bit into result if the comparator agrees.
 : joy-bit  ( result bit -- result' )
   2DUP OR 2 LSHIFT $FF20 C!   \ write (result|bit)<<2 to DAC
   $FF00 C@ $80 AND IF         \ comparator: joystick > DAC?

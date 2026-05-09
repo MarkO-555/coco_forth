@@ -121,12 +121,15 @@ CODE dw-read
 
 
 \ ── DriveWire FujiNet opcodes ──────────────────────────────────────
+\ FN-OP-FUJI — DriveWire opcode prefix for FujiNet's $E2-family Fuji-device commands.
 $E2 CONSTANT FN-OP-FUJI                 \ Fuji device opcode
+\ FN-CMD-READY — FujiNet ping / handshake command byte ($00).
 $00 CONSTANT FN-CMD-READY               \ ping / handshake
+\ FN-CMD-TIME — FujiNet get-wall-clock-time command byte ($23, returns 6 bytes).
 $23 CONSTANT FN-CMD-TIME                \ get time, returns 6 bytes
 
 
-\ ── 2-byte scratch buffer for outgoing command bytes ──────────────
+\ fn-cmd — Two-byte scratch buffer for outgoing FujiNet command bytes.
 VARIABLE fn-cmd
 
 
@@ -150,6 +153,7 @@ VARIABLE fn-cmd
 \ so use a small flag variable.  Typical caller passes ~30 retries
 \ for a ~1-2 second boot probe.
 VARIABLE _fn-rdy-ok
+\ fn-ready/N — Bounded retry version of fn-ready; takes max attempts on the stack and returns -1 on ack or 0 on give-up.
 : fn-ready/N  ( n -- ok )
   0 _fn-rdy-ok !
   BEGIN
@@ -169,6 +173,7 @@ VARIABLE _fn-rdy-ok
 
 \ ── fn-time/N: bounded version of fn-time ───────────────────────
 \ Returns -1 on success (buf populated), 0 on giveup (buf untouched).
+\ fn-time/N — Bounded version of fn-time; returns -1 on success (buf populated) or 0 on give-up (buf untouched).
 : fn-time/N  ( buf n -- ok )
   fn-ready/N IF
     FN-CMD-TIME fn-cmd C!

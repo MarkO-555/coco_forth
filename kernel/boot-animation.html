@@ -17,6 +17,7 @@
     --ram-empty: #1a2a1a;
     --kernel-staged: #2d4a1a;
     --kernel-final: #1a6a2a;
+    --kernel-rom: #1a6a4a;
     --kernel-text: #6f6;
     --bootstrap: #4a3a1a;
     --bootstrap-text: #da3;
@@ -53,8 +54,41 @@
   .subtitle {
     font-size: 12px;
     color: var(--dim);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+    max-width: 720px;
   }
+
+  /* ── Mode toggle ──────────────────────────────── */
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .mode-toggle button {
+    background: #1a1a2e;
+    color: #888;
+    border: none;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    border-radius: 0;
+  }
+  .mode-toggle button.active {
+    background: #2d4a3a;
+    color: #afa;
+  }
+  .mode-toggle button:not(.active):hover { background: #2a2a3e; color: #ccc; }
+
+  /* Mode-scoped element visibility — toggled via body class */
+  body.mode-rom .mode-allram-only { display: none; }
+  body.mode-allram .mode-rom-only { display: none; }
+
   .container {
     display: flex;
     gap: 32px;
@@ -78,10 +112,10 @@
     left: 0;
     width: 100%;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: center;
+    align-items: center;
     font-size: 11px;
-    font-weight: 500;
     opacity: 0;
     transition: opacity 0.6s ease, background-color 0.6s ease;
     overflow: hidden;
@@ -107,7 +141,7 @@
     padding-left: 56px;
   }
 
-  /* ── Copy arrow overlay ──────────────────────────────── */
+  /* ── Copy arrow overlay (all-RAM only) ──────────────── */
   .copy-arrow {
     position: absolute;
     left: 226px;
@@ -224,93 +258,235 @@
   .decb-table tr.loaded td { color: #ccc; }
 </style>
 </head>
-<body>
+<body class="mode-rom">
 
 <h1>CoCo Kernel Boot Sequence</h1>
-<div class="subtitle">How the Forth kernel gets from a DECB binary to running code at $E000. CLOADM can only load to the lower 32K.</div>
+<div class="subtitle">
+  Two kernel build profiles, two boot sequences. <strong>ROM mode</strong> (default,
+  <code>make</code>) keeps BASIC ROMs alive and runs the kernel at <code>$2000</code>.
+  <strong>All-RAM mode</strong> (<code>make allram</code>) pages out the ROMs and
+  relocates the kernel to <code>$E000</code> via a bootstrap copy.
+</div>
+
+<div class="mode-toggle">
+  <button id="btn-mode-rom"    class="active">ROM mode (default)</button>
+  <button id="btn-mode-allram">All-RAM mode</button>
+</div>
 
 <div class="container">
 
   <!-- Memory map -->
   <div class="memmap-wrap">
-    <!-- Address labels -->
-    <div class="addr-label" style="top: 0px;">$0000</div>
-    <div class="addr-label" style="top: 1px;">$0050</div>
-    <div class="addr-label" style="top: 24px;">$0600</div>
-    <div class="addr-label" style="top: 56px;">$0E00</div>
-    <div class="addr-label" style="top: 64px;">$1000</div>
-    <div class="addr-label" style="top: 128px;">$2000</div>
-    <div class="addr-label" style="top: 512px;">$8000</div>
-    <div class="addr-label" style="top: 888px;">$DE00</div>
-    <div class="addr-label" style="top: 896px;">$E000</div>
-    <div class="addr-label" style="top: 1020px;">$FF00</div>
+    <!-- Address labels (always visible; some only meaningful per mode) -->
+    <div class="addr-label" style="top:1024px;">$0000</div>
+    <div class="addr-label" style="top:1023px;">$0050</div>
+    <div class="addr-label" style="top:1008px;">$0400</div>
+    <div class="addr-label" style="top:1000px;">$0600</div>
+    <div class="addr-label mode-allram-only" style="top:968px;">$0E00</div>
+    <div class="addr-label mode-allram-only" style="top:960px;">$1000</div>
+    <div class="addr-label" style="top:896px;">$2000</div>
+    <div class="addr-label mode-rom-only" style="top:832px;">$3000</div>
+    <div class="addr-label mode-rom-only" style="top:672px;">$5800</div>
+    <div class="addr-label mode-rom-only" style="top:544px;">$7800</div>
+    <div class="addr-label mode-rom-only" style="top:520px;">$7E00</div>
+    <div class="addr-label" style="top:512px;">$8000</div>
+    <div class="addr-label mode-allram-only" style="top:448px;">$9000</div>
+    <div class="addr-label" style="top:384px;">$A000</div>
+    <div class="addr-label" style="top:256px;">$C000</div>
+    <div class="addr-label mode-allram-only" style="top:136px;">$DE00</div>
+    <div class="addr-label mode-allram-only" style="top:128px;">$E000</div>
+    <div class="addr-label" style="top:4px;">$FF00</div>
 
     <div class="memmap">
-      <!-- ROM ($8000-$FEFF) — visible at power-on -->
-      <div class="region visible" id="rom"
-           style="top:512px; height:508px; background:var(--rom); color:var(--rom-text);">
-        <div class="label">BASIC + Cartridge ROM<br><span style="font-size:10px">$8000-$FEFF</span></div>
+      <!-- ─── Always visible (until all-RAM pages out ROM) ───── -->
+      <!-- Extended Color BASIC ROM ($8000-$9FFF, 8K) -->
+      <div class="region visible" id="rom-ecb"
+           style="top:384px; height:128px; background:var(--rom); color:var(--rom-text);">
+        <div class="label">Extended Color BASIC ROM<br><span style="font-size:10px">$8000-$9FFF (8K)</span></div>
+      </div>
+
+      <!-- Color BASIC ROM ($A000-$BFFF, 8K) -->
+      <div class="region visible" id="rom-cb"
+           style="top:256px; height:128px; background:#3a1830; color:var(--rom-text);">
+        <div class="label">Color BASIC ROM<br><span style="font-size:10px">$A000-$BFFF (8K)</span></div>
+      </div>
+
+      <!-- Cartridge slot ($C000-$DFFF, 8K) — Disk ECB cart or game cart -->
+      <div class="region visible" id="rom-cart"
+           style="top:128px; height:128px; background:#2a1820; color:var(--rom-text);">
+        <div class="label">Cartridge ROM<br><span style="font-size:10px">$C000-$DFFF (8K)</span><br><span style="font-size:9px; color:#a87aa0;">Disk ECB / FujiNet / game cart</span></div>
+      </div>
+
+      <!-- Reserved space between cart and I/O ($E000-$FEFF) — used in
+           all-RAM mode for kernel + static data; unused in ROM mode -->
+      <div class="region visible" id="rom-upper"
+           style="top:4px; height:124px; background:#2a1828; color:#774;">
+        <div class="label" style="font-size:10px">(reserved $E000-$FEFF)</div>
       </div>
 
       <!-- I/O ($FF00-$FFFF) — always present -->
       <div class="region visible" id="io"
-           style="top:1020px; height:4px; background:var(--io); color:var(--io-text);">
+           style="top:0px; height:4px; background:var(--io); color:var(--io-text);">
+        <div class="label" style="font-size:9px">I/O</div>
       </div>
 
-      <!-- Variables ($0050) -->
+      <!-- ─── BASIC + DECB ownership at boot (lives in lower 32K) ─── -->
+      <!-- BASIC system DP + low vars ($0000-$01FF) — system pointers,
+           input buffer, low working storage; BASIC's "page 0/1" zone -->
+      <div class="region visible" id="basic-dp"
+           style="top:1016px; height:8px; background:#2a3a4a; color:#9bd; z-index:1;">
+        <div class="label" style="font-size:9px">BASIC system vars / DP</div>
+      </div>
+
+      <!-- BASIC graphics vars + line input buffer ($0200-$03FF) -->
+      <div class="region visible" id="basic-vars"
+           style="top:1008px; height:8px; background:#28384a;"></div>
+
+      <!-- DECB disk system reserved ($0600-$0DFF) — file buffers, FATs -->
+      <div class="region visible" id="decb-area"
+           style="top:968px; height:32px; background:#3a2030; color:#caa;">
+        <div class="label" style="font-size:10px">DECB disk system<br><span style="font-size:9px">FCBs, disk buffers</span></div>
+      </div>
+
+      <!-- BASIC program area ($0E00-$7DFF) — free RAM where BASIC programs
+           and LOADM target addresses live -->
+      <div class="region visible" id="basic-program"
+           style="top:520px; height:448px; background:#222628; color:#566; z-index:0;">
+        <div class="label">BASIC program area / free RAM<br><span style="font-size:10px">$0E00-$7DFF (~29K)</span><br><span style="font-size:9px; color:#5a7a5a;">LOADM writes here</span></div>
+      </div>
+
+      <!-- BASIC 6809 stack ($7E00-$7FFF, S grows down from top of RAM) -->
+      <div class="region visible" id="basic-stack"
+           style="top:512px; height:8px; background:#3a2a1a; color:#fc8; z-index:2;">
+        <div class="label" style="font-size:9px">BASIC stack ↓ S=$7FFF</div>
+      </div>
+
+      <!-- ─── Always-visible memory across modes ────────────── -->
+      <!-- DP variables ($0050) — appears once kernel runs -->
       <div class="region" id="vars"
-           style="top:1px; height:3px; background:var(--vars);">
+           style="top:1020px; height:3px; background:var(--vars);"></div>
+
+      <!-- VDG text VRAM ($0400-$05FF) — alive from BASIC boot through kernel handoff -->
+      <div class="region visible" id="text-vram"
+           style="top:1000px; height:8px; background:#3a2a3a; color:#daa;">
+        <div class="label" style="font-size:9px">VDG text VRAM</div>
       </div>
 
-      <!-- Bootstrap ($0E00) — inside future VRAM zone -->
-      <div class="region" id="bootstrap"
-           style="top:56px; height:2px; background:var(--bootstrap);">
-      </div>
-
-      <!-- Staged kernel ($1000) — inside future VRAM zone -->
-      <div class="region" id="staged"
-           style="top:64px; height:18px; background:var(--kernel-staged); color:var(--kernel-text);">
-        <div class="label" style="font-size:10px">Staged kernel</div>
-      </div>
-
-      <!-- App loadable ($2000-$7FFF) — loaded by CLOADM -->
-      <div class="region" id="app"
-           style="top:128px; height:384px; background:var(--app); color:var(--app-text);">
-        <div class="label">Application (loadable)<br><span style="font-size:10px">$2000-$7FFF (~24K via CLOADM)</span></div>
-      </div>
-
-      <!-- Runtime data ($8000-$DDFF) — available after all-RAM -->
-      <div class="region" id="runtime"
-           style="top:512px; height:376px; background:#1a2a1a; color:#4a6a4a; border-top:1px dashed #444;">
-        <div class="label">Runtime RAM<br><span style="font-size:10px">$8000-$DDFF (24K — variables, tables, buffers)</span><br><span style="font-size:9px; color:#555;">writable after all-RAM, not CLOADM-loadable</span></div>
-      </div>
-
-      <!-- Stacks ($DE00-$DFFF) -->
-      <div class="region" id="stacks"
-           style="top:888px; height:8px; background:var(--stack); color:var(--stack-text);">
-      </div>
-
-      <!-- Kernel final ($E000) — appears after copy -->
-      <div class="region" id="kernel-final"
-           style="top:896px; height:18px; background:var(--kernel-final); color:var(--kernel-text); z-index:2;">
-        <div class="label" style="font-size:10px">Kernel (final)</div>
-      </div>
-
-      <!-- Static data ($E472-$FEFF) -->
-      <div class="region" id="static-data"
-           style="top:914px; height:106px; background:var(--static); color:var(--static-text); z-index:0;">
-        <div class="label">Static data<br><span style="font-size:10px">$E472-$FEFF (~7K free)</span></div>
-      </div>
-
-      <!-- VRAM ($0600-$1FFF) — appears after rg-init -->
+      <!-- RG6 VRAM ($0600-$1DFF) — appears after rg-init in either mode -->
       <div class="region" id="vram"
-           style="top:24px; height:104px; background:var(--vram); color:var(--vram-text); z-index:3;">
-        <div class="label">RG6 VRAM<br><span style="font-size:10px">$0600-$1FFF</span></div>
+           style="top:904px; height:96px; background:var(--vram); color:var(--vram-text); z-index:3;">
+        <div class="label">RG6 VRAM<br><span style="font-size:10px">$0600-$1DFF (6K)</span></div>
+      </div>
+
+      <!-- ─── ROM-mode-only regions ────────────────────────── -->
+      <!-- ROM-mode kernel ($2000-$2EAF) -->
+      <div class="region mode-rom-only" id="kernel-rom"
+           style="top:836px; height:60px; background:var(--kernel-rom); color:var(--kernel-text); z-index:2;">
+        <div class="label">Kernel<br><span style="font-size:10px">$2000-$2EAF (3.7K)</span></div>
+      </div>
+
+      <!-- ROM-mode app ($3000-$57FF) -->
+      <div class="region mode-rom-only" id="app-rom"
+           style="top:672px; height:160px; background:var(--app); color:var(--app-text); z-index:2;">
+        <div class="label">Application + variables<br><span style="font-size:10px">$3000-$57FF (~10K)</span></div>
+      </div>
+
+      <!-- ROM-mode font ($5800-$59D7, 470 B) -->
+      <div class="region mode-rom-only" id="font-rom"
+           style="top:666px; height:6px; background:var(--static); color:var(--static-text); z-index:2;">
+        <div class="label" style="font-size:9px">Font ($5800, 470B)</div>
+      </div>
+
+      <!-- ROM-mode app heap ($5A00-$77FF) — free for app data -->
+      <div class="region mode-rom-only" id="heap-rom"
+           style="top:544px; height:120px; background:#222a32; color:#678;">
+        <div class="label">App heap (free)<br><span style="font-size:10px">$5A00-$77FF (~7.5K)</span></div>
+      </div>
+
+      <!-- ROM-mode sin table ($7800-$785A, 91 B) -->
+      <div class="region mode-rom-only" id="sin-rom"
+           style="top:543px; height:1px; background:#bca44a; z-index:2;"></div>
+
+      <!-- Tail of heap below sin ($785B-$7CFF) -->
+      <div class="region mode-rom-only" id="heap-rom-tail"
+           style="top:524px; height:19px; background:#222a32;"></div>
+
+      <!-- ROM-mode data stack zone ($7D00-$7DFF, ~256B below U init) -->
+      <div class="region mode-rom-only" id="stack-data-rom"
+           style="top:520px; height:4px; background:var(--stack); color:var(--stack-text); z-index:2;">
+        <div class="label" style="font-size:9px">Data stack ↓ U=$7E00</div>
+      </div>
+
+      <!-- ROM-mode return stack zone ($7E00-$7FFF, between U and S) -->
+      <div class="region mode-rom-only" id="stack-return-rom"
+           style="top:512px; height:8px; background:#5a3a1a; color:#fcb; z-index:2;">
+        <div class="label" style="font-size:9px">Return stack ↓ S=$8000</div>
+      </div>
+
+      <!-- ─── All-RAM-mode-only regions ────────────────────── -->
+      <!-- Bootstrap ($0E00) -->
+      <div class="region mode-allram-only" id="bootstrap"
+           style="top:966px; height:2px; background:var(--bootstrap);"></div>
+
+      <!-- Staged kernel ($1000-$1EAF, 3.7K) — DECB load address -->
+      <div class="region mode-allram-only" id="staged"
+           style="top:900px; height:60px; background:var(--kernel-staged); color:var(--kernel-text);">
+        <div class="label" style="font-size:10px">Staged kernel<br>$1000-$1EAF</div>
+      </div>
+
+      <!-- All-RAM app ($2000-$7FFF, 24K — LOADM ceiling at $7FFF) -->
+      <div class="region mode-allram-only" id="app-allram"
+           style="top:512px; height:384px; background:var(--app); color:var(--app-text);">
+        <div class="label">Application + variables<br><span style="font-size:10px">$2000-$7FFF (24K)</span></div>
+      </div>
+
+      <!-- Runtime-RAM zone ($8000-$DCFF) — opens up after all-RAM page-out -->
+      <div class="region mode-allram-only" id="runtime"
+           style="top:140px; height:372px; background:#1a2a1a; color:#4a6a4a; border-top:1px dashed #444;">
+        <div class="label">Runtime RAM<br><span style="font-size:10px">$8000-$DCFF (24K free)</span><br><span style="font-size:9px; color:#555;">opens up after ROM pages out;<br>not LOADM-loadable</span></div>
+      </div>
+
+      <!-- All-RAM sin table ($86CC-$8726, 91 B) — populated at runtime -->
+      <div class="region mode-allram-only" id="sin-allram"
+           style="top:484px; height:1px; background:#bca44a;"></div>
+
+      <!-- All-RAM font glyphs ($9000-$91D7, 470 B) — copied at runtime -->
+      <div class="region mode-allram-only" id="font-allram"
+           style="top:442px; height:6px; background:var(--static); color:var(--static-text);">
+        <div class="label" style="font-size:9px">Font ($9000, 470B)</div>
+      </div>
+
+      <!-- All-RAM data stack zone ($DD00-$DDFF, 256B below U=$DE00) -->
+      <div class="region mode-allram-only" id="stack-data-allram"
+           style="top:136px; height:4px; background:var(--stack); color:var(--stack-text);">
+        <div class="label" style="font-size:9px">Data stack ↓ U=$DE00</div>
+      </div>
+
+      <!-- All-RAM return stack zone ($DE00-$DFFF, between U and S) -->
+      <div class="region mode-allram-only" id="stack-return-allram"
+           style="top:128px; height:8px; background:#5a3a1a; color:#fcb;">
+        <div class="label" style="font-size:9px">Return stack ↓ S=$E000</div>
+      </div>
+
+      <!-- All-RAM kernel final ($E000-$EDB0, 3.7K) — copied here from staging -->
+      <div class="region mode-allram-only" id="kernel-final"
+           style="top:68px; height:60px; background:var(--kernel-final); color:var(--kernel-text); z-index:2;">
+        <div class="label">Kernel (final)<br><span style="font-size:10px">$E000-$EDB0 (3.7K)</span></div>
+      </div>
+
+      <!-- All-RAM kernel static data ($EDB0-$FEFF, ~4.3K) -->
+      <div class="region mode-allram-only" id="static-data"
+           style="top:4px; height:64px; background:var(--static); color:var(--static-text); z-index:0;">
+        <div class="label">Kernel static data<br><span style="font-size:10px">$EDB0-$FEFF (~4.3K)</span><br><span style="font-size:9px; color:#7a9a7a;">font-data, sin-data, sprite-data,<br>kernel buffers</span></div>
       </div>
     </div>
 
-    <!-- Copy arrow: $1000 (64px) → $E000 (896px) -->
-    <div class="copy-arrow" id="copy-arrow" style="top: 64px;">
+    <!-- Copy arrow: $1000 (64px) → $E000 (896px), all-RAM only -->
+    <!-- Copy arrow: $1000 (bottom of arrow at top:960 in flipped layout)
+         → $E000 (top of arrow at top:128). Container at top:128, height
+         832 reaches down to pixel 960. Path runs from y=832 (source) to
+         y=0 (destination, where the arrowhead lands). -->
+    <div class="copy-arrow mode-allram-only" id="copy-arrow" style="top:128px;">
       <svg viewBox="0 0 60 832" height="832">
         <defs>
           <marker id="arrowhead" markerWidth="8" markerHeight="6"
@@ -318,84 +494,149 @@
             <polygon points="0 0, 8 3, 0 6" fill="var(--copy-arrow)"/>
           </marker>
         </defs>
-        <path d="M 5,0 C 50,80 50,750 5,832"
+        <path d="M 5,832 C 50,750 50,80 5,0"
               fill="none" stroke="var(--copy-arrow)" stroke-width="2"
               stroke-dasharray="6,4" marker-end="url(#arrowhead)"/>
       </svg>
     </div>
   </div>
 
-  <!-- Narrative -->
-  <div class="narrative">
-    <div class="step-box active" id="step0">
+  <!-- ─── Narrative: ROM mode ──────────────────────────────── -->
+  <div class="narrative mode-rom-only" id="narrative-rom">
+    <div class="step-box active" id="rom-step0">
       <div class="step-num">Power On</div>
-      <div class="step-title">ROM occupies upper 32K</div>
+      <div class="step-title">BASIC + DECB own everything</div>
       <div class="step-body">
-        At power-on, the SAM maps BASIC ROM + cartridge space to
-        <code>$8000-$FEFF</code>. The lower 32K is RAM. BASIC starts
-        and waits for commands.
-        <code>$FF00-$FFFF</code> is always I/O (PIA, SAM, vectors).
+        SAM maps three 8K ROMs to upper 32K — Extended Color BASIC
+        (<code>$8000</code>), Color BASIC (<code>$A000</code>), and
+        the cartridge slot (<code>$C000</code>). Lower 32K is RAM,
+        carved up by BASIC + DECB:
+        <br><br>
+        BASIC system vars at <code>$0000-$01FF</code>, graphics +
+        line buffer at <code>$0200-$03FF</code>, default text VRAM at
+        <code>$0400-$05FF</code>, DECB disk system at
+        <code>$0600-$0DFF</code>, BASIC program area at
+        <code>$0E00-$7DFF</code>, and the 6809 hardware stack at
+        <code>$7E00-$7FFF</code> (S grows down from <code>$7FFF</code>).
+        <br><br>
+        I/O sits at <code>$FF00-$FFFF</code> (PIA, SAM, vectors).
       </div>
     </div>
-    <div class="step-box" id="step1">
+    <div class="step-box" id="rom-step1">
       <div class="step-num">Step 1</div>
-      <div class="step-title">CLOADM loads DECB records</div>
+      <div class="step-title">LOADM drops kernel + app into RAM</div>
       <div class="step-body">
-        XRoar auto-types <code>CLOADM</code>. BASIC reads four DECB data
-        blocks into the lower 32K (the only RAM visible while ROM
-        occupies <code>$8000+</code>):
-        variables at <code>$0050</code>,
+        XRoar (or BASIC at the prompt) loads the DECB binary into
+        lower 32K. LOADM can write anywhere from <code>$0000</code> up
+        to <code>$7FFF</code> (BASIC ROMs cover <code>$8000+</code>):
+        <br><br>
+        Kernel at <code>$2000</code> (~3.7K, includes baked-in
+        font-data and sin-data tables),
+        application + variables at <code>$3000-$7FFF</code> (up to
+        ~20K available).
+        <br><br>
+        No bootstrap, no staging, no copy — the kernel was assembled
+        directly at <code>$2000</code>.
+      </div>
+    </div>
+    <div class="step-box" id="rom-step2">
+      <div class="step-num">Step 2</div>
+      <div class="step-title">JMP START &mdash; kernel runs alongside ROM</div>
+      <div class="step-body">
+        DECB exec is <code>START</code>. The kernel initialises DP
+        variables at <code>$0050</code>, the PIA, VDG text VRAM at
+        <code>$0400</code>, sets up stacks
+        (<code>S=$8000</code>, <code>U=$7E00</code>), and enters the
+        Forth thread at <code>$3000</code> via NEXT.
+        <br><br>
+        The app calls <code>init-font</code> (copies kernel
+        font-data to <code>$5800</code>), <code>init-sin</code>
+        (fills the sin table at <code>$7800</code>), and
+        <code>rg-init</code> (points VRAM to <code>$0600</code>).
+        Calling <code>basic-cold</code>
+        (JMP <code>$A027</code>) returns to the OK prompt — only
+        possible because the BASIC ROMs are still alive.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Narrative: All-RAM mode ───────────────────────────── -->
+  <div class="narrative mode-allram-only" id="narrative-allram">
+    <div class="step-box active" id="ar-step0">
+      <div class="step-num">Power On</div>
+      <div class="step-title">BASIC + DECB own everything</div>
+      <div class="step-body">
+        Identical starting state to ROM mode. SAM maps three 8K ROMs
+        to upper 32K (ECB, CB, cartridge); lower 32K is divided
+        between BASIC system + variables, default text VRAM at
+        <code>$0400-$05FF</code>, DECB disk buffers at
+        <code>$0600-$0DFF</code>, BASIC's program area, and the
+        hardware stack near <code>$7FFF</code>.
+      </div>
+    </div>
+    <div class="step-box" id="ar-step1">
+      <div class="step-num">Step 1</div>
+      <div class="step-title">LOADM stages everything in lower 32K</div>
+      <div class="step-body">
+        LOADM reaches exactly to <code>$7FFF</code> (BASIC ROMs cover
+        <code>$8000+</code>), so <code>fc.py</code> remaps every record
+        at <code>$E000+</code> to a staging address in low RAM:
+        <br><br>
+        DP vars at <code>$0050</code>,
         bootstrap at <code>$0E00</code>,
         staged kernel at <code>$1000</code>,
-        and the application at <code>$2000</code>.
+        application at <code>$2000-$7FFF</code> (24K).
         <br><br>
-        The kernel was assembled at <code>$E000</code> but
-        <code>fc.py</code> remapped it to <code>$1000</code> so BASIC
-        can load it. App code is limited to ~24K (<code>$2000-$7FFF</code>)
-        by this CLOADM constraint.
+        The kernel was assembled at <code>$E000</code>; it'll be
+        copied to its real home in step&nbsp;3. Font glyphs at
+        <code>$9000</code> and the sin table at <code>$86CC</code>
+        are runtime-initialised by the kernel after all-RAM is
+        engaged — they aren't LOADM records.
       </div>
     </div>
-    <div class="step-box" id="step2">
+    <div class="step-box" id="ar-step2">
       <div class="step-num">Step 2</div>
       <div class="step-title">Bootstrap enables all-RAM</div>
       <div class="step-body">
-        CLOADM jumps to the exec address <code>$0E00</code> (bootstrap).
+        DECB exec is <code>$0E00</code> (bootstrap).
         <br><br>
         <code class="asm">ORCC #$50</code> &mdash; mask interrupts<br>
-        <code class="asm">STA $FFDF</code> &mdash; set SAM TY bit: all-RAM mode<br>
+        <code class="asm">STA $FFDF</code> &mdash; set SAM TY: all-RAM<br>
         <br>
-        ROM disappears. <code>$8000-$FEFF</code> is now writable RAM.
-        The <code>$8000-$DDFF</code> region becomes available for
-        runtime data (but was never loaded by CLOADM).
+        ROM disappears. <code>$8000-$FEFF</code> is now writable RAM
+        (font glyphs at <code>$9000</code> get copied into place by
+        the kernel, runtime data zone <code>$8000-$DDFF</code> is
+        free for buffers and tables).
       </div>
     </div>
-    <div class="step-box" id="step3">
+    <div class="step-box" id="ar-step3">
       <div class="step-num">Step 3</div>
       <div class="step-title">Copy $1000 &rarr; $E000</div>
       <div class="step-body">
-        The bootstrap copies the staged kernel to its final location
-        in the ROM&nbsp;2 region:
+        Bootstrap copies the staged kernel to its final location:
         <br><br>
         <code class="asm">LDX #$1000</code> &mdash; source<br>
         <code class="asm">LDY #$E000</code> &mdash; destination<br>
-        <code class="asm">LDD ,X++ / STD ,Y++</code> &mdash; word copy loop<br>
+        <code class="asm">LDD ,X++ / STD ,Y++</code> word-copy loop<br>
         <code class="asm">CMPY #KERN_END / BLO</code><br>
         <br>
-        ~1.1K copied in ~570 iterations.
+        ~3.7 KB copied in ~960 iterations.
       </div>
     </div>
-    <div class="step-box" id="step4">
+    <div class="step-box" id="ar-step4">
       <div class="step-num">Step 4</div>
-      <div class="step-title">JMP START &mdash; kernel runs</div>
+      <div class="step-title">JMP START &mdash; kernel runs at $E000</div>
       <div class="step-body">
         <code class="asm">JMP START</code> &mdash;
-        the kernel initialises PIA, clears the screen, sets up stacks
+        the kernel initialises PIA, sets up stacks
         (<code>S=$E000</code>, <code>U=$DE00</code>), and enters the
-        Forth application thread at <code>$2000</code> via NEXT.
+        Forth thread at <code>$2000</code> via NEXT.
         <br><br>
         The app calls <code>rg-init</code>, which points VRAM to
         <code>$0600</code> &mdash; harmlessly overwriting the dead
-        bootstrap and staged kernel.
+        bootstrap and staged kernel. <code>basic-cold</code> is
+        unsafe in this mode (BASIC ROMs are gone); use
+        <code>bye</code> instead.
       </div>
     </div>
   </div>
@@ -404,100 +645,175 @@
 
 <div class="controls">
   <button id="btn-prev" disabled>&larr; Prev</button>
-  <div class="step-indicator" id="indicator">0 / 4</div>
+  <div class="step-indicator" id="indicator">0 / 0</div>
   <button id="btn-next">Next &rarr;</button>
   <button id="btn-auto" style="margin-left:12px">&#9654; Auto</button>
 </div>
 
-<div class="decb-table">
+<!-- ROM-mode DECB record table -->
+<div class="decb-table mode-rom-only" id="decb-rom">
+  <table>
+    <tr>
+      <th>Record</th><th>Addr</th><th>Size</th><th>Content</th>
+    </tr>
+    <tr id="rom-rec1"><td>1</td><td>$2000</td><td>~3.7 K</td><td>Kernel code (incl. baked-in font-data, sin-data)</td></tr>
+    <tr id="rom-rec2"><td>2</td><td>$3000</td><td>varies</td><td>Application + variables ($3000-$7FFF max)</td></tr>
+    <tr id="rom-rec-exec"><td>Exec</td><td>$2000</td><td>&mdash;</td><td>START &mdash; the kernel itself</td></tr>
+  </table>
+</div>
+
+<!-- All-RAM-mode DECB record table -->
+<div class="decb-table mode-allram-only" id="decb-allram">
   <table>
     <tr>
       <th>Record</th><th>DECB addr</th><th>Size</th><th>Content</th>
     </tr>
-    <tr id="rec1"><td>1</td><td>$0050</td><td>44 B</td><td>Kernel variables</td></tr>
-    <tr id="rec2"><td>2</td><td>$0E00</td><td>~25 B</td><td>Bootstrap</td></tr>
-    <tr id="rec3"><td>3</td><td>$1000</td><td>~1.1K</td><td>Staged kernel (remapped from $E000)</td></tr>
-    <tr id="rec4"><td>4</td><td>$2000</td><td>~14K</td><td>Application (contiguous)</td></tr>
-    <tr id="rec-exec"><td>Exec</td><td>$0E00</td><td>&mdash;</td><td>Bootstrap entry point</td></tr>
+    <tr id="ar-rec1"><td>1</td><td>$0050</td><td>~50 B</td><td>Kernel DP variables</td></tr>
+    <tr id="ar-rec2"><td>2</td><td>$0E00</td><td>~30 B</td><td>Bootstrap</td></tr>
+    <tr id="ar-rec3"><td>3</td><td>$1000</td><td>~3.7 K</td><td>Staged kernel (remapped from $E000)</td></tr>
+    <tr id="ar-rec4"><td>4</td><td>$2000</td><td>up to 24K</td><td>Application + variables ($2000-$7FFF max)</td></tr>
+    <tr id="ar-rec-exec"><td>Exec</td><td>$0E00</td><td>&mdash;</td><td>Bootstrap entry</td></tr>
   </table>
 </div>
 
 <script>
-const steps = [
-  // Step 0: power on
-  () => {},
-  // Step 1: CLOADM loads records (lower 32K only)
-  () => {
-    show('vars');
-    show('bootstrap');
-    show('staged');
-    show('app');
-    for (const id of ['rec1','rec2','rec3','rec4'])
-      document.getElementById(id).classList.add('loaded');
-  },
-  // Step 2: bootstrap enables all-RAM — ROM disappears, upper RAM appears
-  () => {
-    hide('rom');
-    show('runtime');
-    document.getElementById('rec-exec').classList.add('loaded');
-  },
-  // Step 3: copy $1000 → $E000
-  () => {
-    document.getElementById('copy-arrow').classList.add('visible');
-    show('kernel-final');
-    show('static-data');
-    document.getElementById('staged').style.opacity = '0.35';
-  },
-  // Step 4: JMP START — kernel runs, rg-init sets VRAM
-  () => {
-    document.getElementById('copy-arrow').classList.remove('visible');
-    document.getElementById('kernel-final').style.boxShadow =
-      '0 0 12px rgba(100,255,100,0.3)';
-    show('stacks');
-    show('vram');
-    // bootstrap + staged are now under VRAM
-    document.getElementById('bootstrap').style.opacity = '0';
-    document.getElementById('staged').style.opacity = '0';
-  }
-];
+function show(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('visible');
+}
+function hide(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('visible');
+}
 
-const undos = [
-  () => {},
-  () => {
-    hide('vars'); hide('bootstrap'); hide('staged'); hide('app');
-    for (const id of ['rec1','rec2','rec3','rec4'])
-      document.getElementById(id).classList.remove('loaded');
+// ── Per-mode step + undo arrays ────────────────────────────────
+const modes = {
+  rom: {
+    total: 2,
+    steps: [
+      // 0: power on (initial state)
+      () => {},
+      // 1: LOADM populates lower 32K — BASIC areas get overwritten by
+      //    kernel + app records, BASIC stack stays alive (BASIC is
+      //    executing the load).
+      () => {
+        hide('basic-dp'); hide('basic-vars'); hide('decb-area'); hide('basic-program');
+        show('kernel-rom'); show('app-rom'); show('heap-rom'); show('heap-rom-tail');
+        for (const id of ['rom-rec1','rom-rec2'])
+          document.getElementById(id).classList.add('loaded');
+      },
+      // 2: JMP START — BASIC stack dies, kernel inits its own stacks + DP,
+      //    app initialises font, sin, VRAM
+      () => {
+        hide('basic-stack');
+        show('vars'); show('font-rom'); show('sin-rom');
+        show('stack-data-rom'); show('stack-return-rom'); show('vram');
+        document.getElementById('rom-rec-exec').classList.add('loaded');
+        document.getElementById('kernel-rom').style.boxShadow =
+          '0 0 12px rgba(100,255,100,0.3)';
+      },
+    ],
+    undos: [
+      () => {},
+      () => {
+        show('basic-dp'); show('basic-vars'); show('decb-area'); show('basic-program');
+        hide('kernel-rom'); hide('app-rom'); hide('heap-rom'); hide('heap-rom-tail');
+        for (const id of ['rom-rec1','rom-rec2'])
+          document.getElementById(id).classList.remove('loaded');
+      },
+      () => {
+        show('basic-stack');
+        hide('vars'); hide('font-rom'); hide('sin-rom');
+        hide('stack-data-rom'); hide('stack-return-rom'); hide('vram');
+        document.getElementById('rom-rec-exec').classList.remove('loaded');
+        document.getElementById('kernel-rom').style.boxShadow = '';
+      },
+    ],
+    stepIds: ['rom-step0','rom-step1','rom-step2'],
   },
-  () => {
-    show('rom');
-    hide('runtime');
-    document.getElementById('rec-exec').classList.remove('loaded');
-  },
-  () => {
-    document.getElementById('copy-arrow').classList.remove('visible');
-    hide('kernel-final'); hide('static-data');
-    document.getElementById('staged').style.opacity = '';
-  },
-  () => {
-    document.getElementById('kernel-final').style.boxShadow = '';
-    hide('stacks'); hide('vram');
-    document.getElementById('bootstrap').style.opacity = '';
-    document.getElementById('staged').style.opacity = '0.35';
-  }
-];
 
-function show(id) { document.getElementById(id).classList.add('visible'); }
-function hide(id) { document.getElementById(id).classList.remove('visible'); }
+  allram: {
+    total: 4,
+    steps: [
+      () => {},
+      // 1: LOADM stages everything in low RAM — BASIC areas overwritten,
+      //    BASIC stack stays alive (BASIC is executing the load and
+      //    will jump to the bootstrap exec address next).
+      () => {
+        hide('basic-dp'); hide('basic-vars'); hide('decb-area'); hide('basic-program');
+        show('vars'); show('bootstrap'); show('staged'); show('app-allram');
+        for (const id of ['ar-rec1','ar-rec2','ar-rec3','ar-rec4'])
+          document.getElementById(id).classList.add('loaded');
+      },
+      // 2: bootstrap enables all-RAM — BASIC stack dies, ROM disappears,
+      //    runtime RAM zone opens up
+      () => {
+        hide('basic-stack');
+        hide('rom-ecb'); hide('rom-cb'); hide('rom-cart'); hide('rom-upper');
+        show('runtime');
+        document.getElementById('ar-rec-exec').classList.add('loaded');
+      },
+      // 3: copy $1000 → $E000
+      () => {
+        document.getElementById('copy-arrow').classList.add('visible');
+        show('kernel-final');
+        show('static-data');
+        document.getElementById('staged').style.opacity = '0.35';
+      },
+      // 4: JMP START — kernel runs at $E000, font/sin populated, VRAM up
+      () => {
+        document.getElementById('copy-arrow').classList.remove('visible');
+        document.getElementById('kernel-final').style.boxShadow =
+          '0 0 12px rgba(100,255,100,0.3)';
+        show('text-vram'); show('font-allram'); show('sin-allram');
+        show('stack-data-allram'); show('stack-return-allram'); show('vram');
+        document.getElementById('bootstrap').style.opacity = '0';
+        document.getElementById('staged').style.opacity = '0';
+      },
+    ],
+    undos: [
+      () => {},
+      () => {
+        show('basic-dp'); show('basic-vars'); show('decb-area'); show('basic-program');
+        hide('vars'); hide('bootstrap'); hide('staged'); hide('app-allram');
+        for (const id of ['ar-rec1','ar-rec2','ar-rec3','ar-rec4'])
+          document.getElementById(id).classList.remove('loaded');
+      },
+      () => {
+        show('basic-stack');
+        show('rom-ecb'); show('rom-cb'); show('rom-cart'); show('rom-upper');
+        hide('runtime');
+        document.getElementById('ar-rec-exec').classList.remove('loaded');
+      },
+      () => {
+        document.getElementById('copy-arrow').classList.remove('visible');
+        hide('kernel-final'); hide('static-data');
+        document.getElementById('staged').style.opacity = '';
+      },
+      () => {
+        document.getElementById('kernel-final').style.boxShadow = '';
+        hide('text-vram'); hide('font-allram'); hide('sin-allram');
+        hide('stack-data-allram'); hide('stack-return-allram'); hide('vram');
+        document.getElementById('bootstrap').style.opacity = '';
+        document.getElementById('staged').style.opacity = '0.35';
+      },
+    ],
+    stepIds: ['ar-step0','ar-step1','ar-step2','ar-step3','ar-step4'],
+  },
+};
 
+let mode = 'rom';
 let current = 0;
-const total = steps.length - 1;
+
+function activeMode() { return modes[mode]; }
 
 function updateUI() {
-  document.getElementById('indicator').textContent = `${current} / ${total}`;
+  const m = activeMode();
+  document.getElementById('indicator').textContent = `${current} / ${m.total}`;
   document.getElementById('btn-prev').disabled = current === 0;
-  document.getElementById('btn-next').disabled = current === total;
-  for (let i = 0; i <= total; i++) {
-    const box = document.getElementById('step' + i);
+  document.getElementById('btn-next').disabled = current === m.total;
+  for (let i = 0; i <= m.total; i++) {
+    const box = document.getElementById(m.stepIds[i]);
     box.classList.remove('active', 'done');
     if (i === current) box.classList.add('active');
     else if (i < current) box.classList.add('done');
@@ -505,16 +821,46 @@ function updateUI() {
 }
 
 function goTo(n) {
+  const m = activeMode();
   if (n > current) {
-    while (current < n) { current++; steps[current](); }
+    while (current < n) { current++; m.steps[current](); }
   } else if (n < current) {
-    while (current > n) { undos[current](); current--; }
+    while (current > n) { m.undos[current](); current--; }
   }
   updateUI();
 }
 
+function resetToStart() {
+  // Reverse-step back to 0 in current mode, then set initial state.
+  const m = activeMode();
+  while (current > 0) { m.undos[current](); current--; }
+  updateUI();
+}
+
+function setMode(newMode) {
+  if (newMode === mode) return;
+  // Rewind current mode to step 0 first
+  resetToStart();
+  // Clear any inline styles the active path may have set
+  for (const id of ['kernel-rom','kernel-final','staged','bootstrap']) {
+    const el = document.getElementById(id);
+    if (el) { el.style.boxShadow = ''; el.style.opacity = ''; }
+  }
+  mode = newMode;
+  document.body.classList.toggle('mode-rom',    mode === 'rom');
+  document.body.classList.toggle('mode-allram', mode === 'allram');
+  document.getElementById('btn-mode-rom').classList.toggle('active',    mode === 'rom');
+  document.getElementById('btn-mode-allram').classList.toggle('active', mode === 'allram');
+  current = 0;
+  updateUI();
+}
+
+document.getElementById('btn-mode-rom').onclick    = () => setMode('rom');
+document.getElementById('btn-mode-allram').onclick = () => setMode('allram');
+
 document.getElementById('btn-next').onclick = () => {
-  if (current < total) goTo(current + 1);
+  const m = activeMode();
+  if (current < m.total) goTo(current + 1);
 };
 document.getElementById('btn-prev').onclick = () => {
   if (current > 0) goTo(current - 1);
@@ -525,18 +871,19 @@ document.getElementById('btn-auto').onclick = function() {
   if (autoTimer) {
     clearInterval(autoTimer);
     autoTimer = null;
-    this.textContent = '\u25B6 Auto';
+    this.textContent = '▶ Auto';
     return;
   }
-  if (current === total) goTo(0);
-  this.textContent = '\u23F8 Pause';
+  if (current === activeMode().total) goTo(0);
+  this.textContent = '⏸ Pause';
   autoTimer = setInterval(() => {
-    if (current < total) {
+    const m = activeMode();
+    if (current < m.total) {
       goTo(current + 1);
     } else {
       clearInterval(autoTimer);
       autoTimer = null;
-      document.getElementById('btn-auto').textContent = '\u25B6 Auto';
+      document.getElementById('btn-auto').textContent = '▶ Auto';
     }
   }, 2000);
 };
@@ -544,7 +891,7 @@ document.getElementById('btn-auto').onclick = function() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === ' ') {
     e.preventDefault();
-    if (current < total) goTo(current + 1);
+    if (current < activeMode().total) goTo(current + 1);
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault();
     if (current > 0) goTo(current - 1);
