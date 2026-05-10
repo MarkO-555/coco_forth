@@ -94,7 +94,3 @@ This isn't about making the CoCo into something it isn't. It's about making it i
 
 Renovating the tooling layer of a functioning vintage platform preserves authenticity — you're still writing 6809 assembly, still constrained to 64K, still running on real hardware — while removing the friction that was always accidental rather than essential.
 
----
-
-*A separate hardware re-envisioning project (F18A FPGA video, CEM3394 analog synth,
-RP2350 co-processor) is documented in `proposals/future-hardware.md`.*
