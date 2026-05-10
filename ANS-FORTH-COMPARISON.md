@@ -1,4 +1,4 @@
-# ANS-Forth (Sean Conner, 2025) vs CoCo Renovation Forth
+# ANS-Forth (Sean Conner, 2025) vs Bare Naked Forth
 
 A side-by-side comparison of two ITC Forth implementations for the 6809.
 
@@ -6,7 +6,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Identity & Scope
 
-|                | ANS-Forth                                            | CoCo Renovation                                                       |
+|                | ANS-Forth                                            | Bare Naked Forth                                                       |
 |----------------|------------------------------------------------------|-----------------------------------------------------------------------|
 | Form           | Single 11.5K-line `forth.asm`, GPL3+                 | Kernel + Python cross-compiler + .fs library                          |
 | Target         | Generic 6809 (host wires 3 vectors: getchar/putchar/bye) | TRS-80 CoCo specifically                                          |
@@ -16,7 +16,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Architecture (both ITC)
 
-|                | ANS-Forth                                  | CoCo Renovation               |
+|                | ANS-Forth                                  | Bare Naked Forth               |
 |----------------|--------------------------------------------|-------------------------------|
 | IP register    | **Y**                                      | **X**                         |
 | Data stack     | **U**                                      | **U**                         |
@@ -28,7 +28,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Word counts / Wordsets
 
-|                | ANS-Forth                                                  | CoCo Renovation                                          |
+|                | ANS-Forth                                                  | Bare Naked Forth                                          |
 |----------------|------------------------------------------------------------|----------------------------------------------------------|
 | Built-in words | 272 (in target dictionary)                                 | 81 primitives + 3 inline data words; rest in `lib/*.fs`  |
 | Name flags     | IMMEDIATE, HIDDEN, NOINTERP, DOUBLE-TO, LOCAL-TO           | (Cross-compile time only)                                |
@@ -37,7 +37,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Interactive Surface
 
-|                       | ANS-Forth                                                                         | CoCo Renovation                                          |
+|                       | ANS-Forth                                                                         | Bare Naked Forth                                          |
 |-----------------------|-----------------------------------------------------------------------------------|----------------------------------------------------------|
 | On-device interpreter | **Yes** — full text reader, parser, `: … ;`, `CREATE … DOES>`, `EVALUATE`, `SEE` | **No** — write `.fs` on host, cross-compile, transfer    |
 | Number prefixes       | `#dec`, `$hex`, `%bin`, `'c'`                                                     | Compile-time: `$hex`, `%bin`, `#literal` (fc.py)         |
@@ -47,7 +47,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Platform Integration
 
-|                          | ANS-Forth                          | CoCo Renovation                                                                 |
+|                          | ANS-Forth                          | Bare Naked Forth                                                                 |
 |--------------------------|------------------------------------|---------------------------------------------------------------------------------|
 | Hardware-specific words  | None — pure CPU + I/O vectors      | VDG/SG, keyboard matrix, IRQ/VSYNC, SAM register, FujiNet, sound DAC, sprite/beam libs |
 | Memory profiles          | One; placeable in ROM              | Two: ROM mode ($2000) and all-RAM ($1000-staged → $E000 final)                  |
@@ -56,7 +56,7 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 
 ## Engineering Process
 
-|                        | ANS-Forth                                                          | CoCo Renovation                                                |
+|                        | ANS-Forth                                                          | Bare Naked Forth                                                |
 |------------------------|--------------------------------------------------------------------|----------------------------------------------------------------|
 | Built-in tests         | `.test`/`.endtst` blocks throughout source, asserts vs. registers/memory | None in-asm; relies on demo-running + manual XRoar verification |
 | Standards documentation | Full Implementation-Defined / Ambiguous-Conditions tables in README | `reference.html`, tutorial HTML, `kernel/README.md`             |
@@ -68,7 +68,8 @@ ANS-Forth source: `~/github/ANS-Forth` (`forth.asm`, GPL3+).
 Forth — drop-in three vectors and you have an interactive ANS 2012 system. Big,
 complete, conservative.
 
-**CoCo Renovation** is a *cross-compiled, hardware-rich, custom* Forth —
+**Bare Naked Forth** (the Forth that powers CoCo Renovation) is a
+*cross-compiled, hardware-rich, custom* Forth —
 smaller kernel, no on-device interpreter, but the toolchain (Python escape
 hatches, KCODE blocks, struct definers, `DATA[PY]`, cycle measurement) and the
 CoCo-native libraries (VDG, sprites, sound, FujiNet) are the value
