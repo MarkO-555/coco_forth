@@ -148,7 +148,7 @@ This is a working research document. Uncertain claims are marked **(verify)** an
 
 **Nick Marentes** — Australian developer. *Donut Dilemma*, *Gunstar*, *Cashman*. Remarkably active into the modern era, still producing new CoCo games and writing about the development process.
 
-**Mark Marlette** — Cloud-9 Tech. CoCo 3 hardware expansions including the SuperBoard and SuperIDE.
+**Mark Marlette** — Cloud-9 Tech (Delano, MN). Modern-era CoCo hardware vendor. Product line includes the SuperBoard, SuperIDE, the 63x09E CPU upgrade and matching Pro-Tector+ socket, the TRIAD+ 512K–2048K SRAM memory upgrade, the Multi-Pak PAL/satellite-board CoCo 3 upgrade, the PS/2 keyboard interface, and the CoCo 3 RGB/SCART/HDMI adapter package. Also resells refurbished CoCo 3 units.
 
 **Ian Mavric** — CoCoFEST! co-organizer (Glenside Color Computer Club).
 
@@ -206,7 +206,7 @@ This is a working research document. Uncertain claims are marked **(verify)** an
 
 **Mark Siegel** — Tandy. Widely regarded as the "father of the CoCo 3" and the CoCo's biggest internal supporter at Tandy. Championed the product through its final Radio Shack generation (1986) and later provided first-hand accounts of the prototype and development history to CoCo historians.
 
-**Ed Snider** — Creator of the *CoCoSDC*, an SD card interface for real CoCo hardware. Brought modern storage to vintage machines.
+**Ed Snider** (aka "Zippster") — Creator of the *CoCoSDC*, an SD card interface for real CoCo hardware. Brought modern storage to vintage machines. Sells and supports the CoCoSDC through his shop, **BoysonTech**.
 
 **John Strong** — Strongware. CoCo game developer and development-tool author. Frequent featured guest on CoCoTALK! / The CoCo Nation Show, where he has demonstrated CoCo projects and game-creation tools. A connecting figure between the modern-era game developer community and the livestream/podcast scene.
 
