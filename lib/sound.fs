@@ -22,8 +22,15 @@ CODE snd-init  \ ( -- )
         STB     $FF03           ; PIA0 CR-B: SEL2=0, data reg, no IRQ
                                 ; → audio mux = 00 = 6-bit DAC
         STB     $FF21           ; PIA1 CR-A: data reg, no IRQ
+        ; Make PIA1 PB1 (single-bit sound output) an output.
+        ; Drop CR-B bit 2 to switch $FF22 to its DDR, set bit 1, restore.
+        LDB     #$30
+        STB     $FF23           ; PIA1 CR-B: DDR access mode
+        LDB     $FF22
+        ORB     #$02            ; bit 1 = output
+        STB     $FF22           ; write DDR
         LDB     #$3C
-        STB     $FF23           ; PIA1 CR-B: Six Bit Sounds ON
+        STB     $FF23           ; PIA1 CR-B: data mode + Six Bit Sound enable (CB2)
         ;NEXT
 ;CODE
 
@@ -56,6 +63,95 @@ SNT_D2  SUBD    #1
         LEAS    2,S
         ;NEXT
 ;CODE
+
+VARIABLE _noise-delay   \ shared by snd-noise and snd-noise1
+
+\ ── 1-bit sound primitives ────────────────────────────────────────────
+\ The CoCo has a *second* audio path independent of the 6-bit DAC: a
+\ single bit at PIA1 PB bit 1 ($FF22 bit 1), mixed into the same audio
+\ bus.  Toggling it produces a square click; toggling at audio rates
+\ produces a square tone.  Cost per toggle is one EOR + STB — cheaper
+\ than the DAC's two writes per half-cycle.
+\
+\ $FF22 also carries VDG mode bits (7-3) and RS-232 IN (bit 0), so all
+\ writes here are read-modify-write (LDB/EORB #$02/STB) to preserve
+\ those bits.  A constant store would scramble the screen mode.
+
+\ snd-tone1 — 1-bit square tone via $FF22 bit 1; pitch/duration like snd-tone.
+CODE snd-tone1  \ ( pitch duration -- )
+        LDD     2,U             ; D = pitch
+        PSHS    D
+        LDY     ,U              ; Y = duration
+        LEAU    4,U
+        LDB     #$34
+        STB     $FF01
+        STB     $FF03
+        STB     $FF21
+        LDB     #$30
+        STB     $FF23           ; DDR mode
+        LDB     $FF22
+        ORB     #$02
+        STB     $FF22           ; PB1 = output
+        LDB     #$3C
+        STB     $FF23           ; data mode + sound enable
+SN1_LP  LDB     $FF22
+        EORB    #$02
+        STB     $FF22           ; toggle 1-bit output
+        LDD     ,S
+SN1_D1  SUBD    #1
+        BNE     SN1_D1
+        LDB     $FF22
+        EORB    #$02
+        STB     $FF22           ; toggle back
+        LDD     ,S
+SN1_D2  SUBD    #1
+        BNE     SN1_D2
+        LEAY    -1,Y
+        BNE     SN1_LP
+        LEAS    2,S
+        ;NEXT
+;CODE
+
+\ snd-click1 — Single 1-bit toggle; the primitive percussive element.
+CODE snd-click1  \ ( -- )
+        LDB     #$34
+        STB     $FF01
+        STB     $FF03
+        STB     $FF21
+        LDB     #$30
+        STB     $FF23           ; DDR mode
+        LDB     $FF22
+        ORB     #$02
+        STB     $FF22           ; PB1 = output
+        LDB     #$3C
+        STB     $FF23           ; data mode + sound enable
+        LDB     $FF22
+        EORB    #$02
+        STB     $FF22
+        ;NEXT
+;CODE
+
+\ _snd-toggle1 — Internal: single toggle of $FF22 bit 1, no PIA init.
+\ Used by snd-noise1 inside a tight Forth loop where snd-init has
+\ already run.
+CODE _snd-toggle1  \ ( -- )
+        LDB     $FF22
+        EORB    #$02
+        STB     $FF22
+        ;NEXT
+;CODE
+
+\ snd-noise1 — 1-bit white-noise burst; delay/duration like snd-noise.
+\ Each iteration consults the RNG and toggles the bit when the random
+\ byte's high bit is set, so the toggle pattern is irregular — gives
+\ noise rather than a tone.  delay sets inter-sample spacing.
+: snd-noise1  ( delay duration -- )
+  snd-init
+  SWAP _noise-delay !
+  0 DO
+    rng kvar-seed @ $80 AND IF _snd-toggle1 THEN
+    _noise-delay @ 0 DO LOOP
+  LOOP ;
 
 \ ── snd-saw ( step pitch duration -- ) ────────────────────────────────
 \ Sawtooth-style waveform.  Each sample, the DAC value is incremented
@@ -166,7 +262,6 @@ SIN_HALF_DONE
 \ White-noise burst by writing random DAC values.
 \   delay    inter-sample wait (lower = higher pitched hiss)
 \   duration sample count
-VARIABLE _noise-delay
 : snd-noise  ( delay duration -- )
   snd-init
   SWAP _noise-delay !

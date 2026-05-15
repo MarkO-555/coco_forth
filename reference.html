@@ -1440,6 +1440,21 @@ CODE fast-plot   ( x y -- )
             <td>White-noise burst: <code>delay</code> = inter-sample wait (lower = higher-pitched hiss); <code>duration</code> = sample count. Uses the kernel rng for random DAC values.</td>
           </tr>
           <tr>
+            <td class="word-name">snd-tone1</td>
+            <td class="stack-effect">( pitch duration -- )</td>
+            <td>Square tone via the 1-bit sound output at $FF22 bit 1, independent of the DAC. Same pitch/duration convention as <code>snd-tone</code>. <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-click1</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Single 1-bit toggle &mdash; the primitive percussive element. <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-noise1</td>
+            <td class="stack-effect">( delay duration -- )</td>
+            <td>1-bit white-noise burst: each iteration consults the kernel rng and toggles $FF22 bit 1 when the random byte's high bit is set. <code>delay</code> and <code>duration</code> as in <code>snd-noise</code>.</td>
+          </tr>
+          <tr>
             <td class="word-name">snd-beep</td>
             <td class="stack-effect">( -- )</td>
             <td>Short beep.</td>

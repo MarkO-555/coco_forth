@@ -411,6 +411,9 @@ DAC sound library for the CoCo
 
 - **`snd-init`** — Configure PIAs for DAC output (called automatically by snd-tone et al.). CODE word.
 - **`snd-tone`** — Square wave: pitch = inter-toggle delay (lower = higher frequency); duration = toggle-cycle count. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~46cy/iter)*
+- **`snd-tone1`** — 1-bit square tone via $FF22 bit 1; pitch/duration like snd-tone. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~56cy/iter)*
+- **`snd-click1`** — Single 1-bit toggle; the primitive percussive element.
+- **`snd-noise1`** — 1-bit white-noise burst; delay/duration like snd-noise. *(has DO/LOOP, has DO/LOOP)*
 - **`snd-saw`** — Sawtooth wave: each sample, the DAC value advances by step (positive = rising, $FC = falling). CODE word. *(loop: ~7cy/iter, loop: ~43cy/iter)*
 - **`snd-tri`** — Triangle wave: ramp up then ramp down (built from snd-saw).
 - **`snd-sin`** — Sine wave via the kernel sin table (requires init-sin); duration = number of half-waves. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~126cy/iter)*
@@ -425,15 +428,18 @@ DAC sound library for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `snd-init` | `( -- )` | CODE | 23 | 39 |
+| `snd-init` | `( -- )` | CODE | 36 | 58 |
 | `snd-tone` | `( pitch duration -- )` | CODE | 60 | 114 |
+| `snd-tone1` | `( pitch duration -- )` | CODE | 81 | 143 |
+| `snd-click1` | `( -- )` | CODE | 44 | 70 |
+| `snd-noise1` | `( delay duration -- )` | colon | 52 | 889 |
 | `snd-saw` | `( step pitch duration -- )` | CODE | 59 | 124 |
 | `snd-tri` | `( pitch duration -- )` | colon | 24 | 614 |
 | `snd-sin` | `( pitch duration -- )` | CODE | 107 | 208 |
-| `snd-noise` | `( delay duration -- )` | colon | 52 | 843 |
+| `snd-noise` | `( delay duration -- )` | colon | 52 | 862 |
 | `snd-beep` | `( -- )` | colon | 14 | 225 |
 | `snd-zap` | `( -- )` | colon | 26 | 392 |
-| `snd-boom` | `( -- )` | colon | 14 | 954 |
+| `snd-boom` | `( -- )` | colon | 14 | 973 |
 | `snd-pause` | `( count -- )` | colon | 12 | 245 |
 | `snd-chirp` | `( -- )` | colon | 46 | 1129 |
 | `snd-dock` | `( -- )` | colon | 24 | 401 |
