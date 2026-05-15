@@ -1,5 +1,7 @@
 \ hello.fs — minimal test program for the CoCo Forth kernel
 
+INCLUDE ../../lib/bye.fs
+
 : SPACE  32 EMIT ;
 : DOT    CHAR . EMIT ;
 
@@ -17,4 +19,5 @@
 : version  ( ver -- )
   DUP 8 RSHIFT digit DOT $FF AND digit ;
 
-BARE SPACE NAKED SPACE FORTH SPACE KERN-VERSION version HALT
+BARE SPACE NAKED SPACE FORTH SPACE KERN-VERSION version
+BEGIN KEY 3 = UNTIL exit-basic
