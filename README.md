@@ -1,8 +1,15 @@
-# CoCo Forth — Version 1.1
+# CoCo Forth — Version 1.2
 
 A cross-compiled Forth system for the TRS-80 Color Computer, targeting the
 Motorola 6809 CPU. Write Forth on a modern machine, cross-compile with
 `fc.py`, run on real hardware or under emulation.
+
+> **New in 1.2 — asynchronous sound.** `lib/async-sound.fs` adds a
+> non-blocking, cooperative DAC sound engine: a phase-accumulator wavetable
+> voice driven by HSYNC-flag polling (`snd-poll` / `snd-fill`), so a game can
+> keep a tone playing across frames without a blocking delay loop and with no
+> kernel changes. See `src/sound-async`, `proposals/SOUND_ENGINE_PROPOSAL.md`,
+> and `proposals/hsync_polling_budget_chart.html`.
 
 ## Architecture
 

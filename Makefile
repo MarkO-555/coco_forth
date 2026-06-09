@@ -7,7 +7,7 @@
 #   make dsks         build both DSKs
 #   make clean        remove all build artifacts
 
-DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time sound sound1bit
+DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time sound sound1bit sound-async
 KERNEL       = kernel
 DSK          = build/demos.dsk
 TUTORIAL_DSK = build/tutorial.dsk
@@ -66,8 +66,9 @@ dsk: demos
 	decb copy src/fujinet-time/fujinet-time.bin    $(DSK),FNTIME.BIN -2
 	decb copy src/sound/sound.bin                  $(DSK),SOUND.BIN -2
 	decb copy src/sound1bit/sound1bit.bin          $(DSK),SOUND1B.BIN -2
+	decb copy src/sound-async/sound-async.bin      $(DSK),SNDASYNC.BIN -2
 	@echo ""
-	@echo "  $(DSK) created with 13 programs."
+	@echo "  $(DSK) created with 14 programs."
 	@echo "  Copy to SD card for FujiNet, or load in XRoar."
 	@echo "  In DECB:  LOADM\"BOUNCE\":EXEC"
 

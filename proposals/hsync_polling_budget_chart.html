@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cooperative HSYNC Polling — Scheduling Feasibility</title>
+<style>
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Menlo', 'Consolas', monospace; margin: 0; padding: 20px; }
+  h1 { color: #00ff88; font-size: 18px; margin-bottom: 4px; }
+  h2 { color: #888; font-size: 13px; font-weight: normal; margin-top: 0; }
+  .chart-container { position: relative; margin: 16px 0; }
+  canvas { display: block; }
+  .controls { margin: 10px 0; font-size: 13px; }
+  .controls .row { margin: 6px 0; }
+  .controls .label { color: #777; display: inline-block; width: 86px; }
+  button { background: #2a2a4e; color: #e0e0e0; border: 1px solid #4488cc; border-radius: 4px;
+           font-family: inherit; font-size: 12px; padding: 6px 12px; cursor: pointer; margin-right: 6px; }
+  button.active { background: #00ff88; color: #1a1a2e; border-color: #00ff88; font-weight: bold; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 2px; }
+  .stats { margin-top: 18px; font-size: 13px; line-height: 1.75; max-width: 1160px; }
+  .stats .over { color: #ff4444; }
+  .stats .ok { color: #00ff88; }
+  .stats code { background: #2a2a4e; padding: 1px 5px; border-radius: 3px; color: #ffcc66; }
+  .big { font-size: 15px; }
+</style>
+</head>
+<body>
+
+<h1>Cooperative HSYNC Polling — Scheduling Feasibility (Space Warp frame)</h1>
+<h2>Option B from the async-sound proposal · R0-high, 22,000cy budget · sample-spacing target = 16 samples/frame (#485) = 1,375cy</h2>
+
+<div class="controls">
+  <div class="row"><span class="label">Frame:</span>
+    <button id="f-odd" class="active">Odd (collisions)</button>
+    <button id="f-even">Even (Jovian AI)</button>
+  </div>
+  <div class="row"><span class="label">View:</span>
+    <button id="v-naive" class="active">Naive poll (between Forth words)</button>
+    <button id="v-instr">Instrumented (poll &le;84cy)</button>
+    <button id="v-space">Sample-spacing eval (&le;1,375cy)</button>
+  </div>
+</div>
+
+<div class="chart-container">
+  <canvas id="chart" width="1200" height="360"></canvas>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="stats" id="stats"></div>
+
+<script>
+// ── Hardware / budget constants ─────────────────────────────────────────────
+const BUDGET   = 22000;            // R0-high frame budget (Space Warp #481)
+const HSYNC    = 262;              // HSYNC ticks per NTSC frame
+const ROW_CY   = BUDGET / HSYNC;   // ~84 cy per scan line at R0-high
+const ROW_US   = 63.5;             // one HSYNC row in microseconds (wall clock)
+const POLL_CY  = 103;              // measured emit-path cost of snd-poll (fc.py --cycles, issue #508);
+                                   // a fast-path no-op return (no new HSYNC) is ~22cy
+const TARGET_SPF = 16;             // sound sample-rate floor (#485): 16 samples/frame
+const TARGET_CY  = BUDGET / TARGET_SPF;   // 1,375cy — max gap between fresh DAC writes
+
+// ── Space Warp frames (costs verbatim from frame_budget_chart.html buildFrame) ─
+// Odd heavy frame f=9: odd, gravity, collisions, jov-moved.
+const ODD_LOGIC = [
+  { name: 'move-ship',      color: '#3377bb', cy: 922  },
+  { name: 'process-key',    color: '#5599dd', cy: 785  },
+  { name: 'save-ship-pos',  color: '#2266aa', cy: 374  },
+  { name: 'tick systems',   color: '#4488cc', cy: 764  },
+  { name: 'loop overhead',  color: '#336699', cy: 429  },
+  { name: 'tick-energy',    color: '#227755', cy: 175  },
+  { name: 'tick-dock',      color: '#2a9966', cy: 212  },
+  { name: 'collisions',     color: '#66aa44', cy: 1833 },
+  { name: 'jov-contact',    color: '#ee8800', cy: 294  },
+  { name: 'jov-grav-pull',  color: '#cc6600', cy: 494  },
+];
+// Even heavy frame f=8: even, gravity, J2 thinks, jov-moved.
+const EVEN_LOGIC = [
+  { name: 'move-ship',      color: '#3377bb', cy: 922  },
+  { name: 'process-key',    color: '#5599dd', cy: 785  },
+  { name: 'save-ship-pos',  color: '#2266aa', cy: 374  },
+  { name: 'tick systems',   color: '#4488cc', cy: 764  },
+  { name: 'loop overhead',  color: '#336699', cy: 429  },
+  { name: 'tick-energy',    color: '#227755', cy: 175  },
+  { name: 'tick-dock',      color: '#2a9966', cy: 212  },
+  { name: 'ship-gravity',   color: '#cc8844', cy: 466  },
+  { name: 'tick-jovians',   color: '#dd3333', cy: 140  },
+  { name: 'jov-think (AI)',  color: '#ff4444', cy: 1449 },
+  { name: 'jov-contact',    color: '#ee8800', cy: 294  },
+];
+// Render phase is identical for both (jov-moved path).
+const RENDER = [
+  { name: 'draw-stars',     color: '#44aacc', cy: 196  },
+  { name: 'draw-base',      color: '#3399aa', cy: 535  },
+  { name: 'draw-jovians',   color: '#55bbdd', cy: 1151 },
+  { name: 'draw-ship',      color: '#66ccee', cy: 819  },
+  { name: 'bg-jov',         color: '#338899', cy: 2000 },
+  { name: 'bg-ship',        color: '#449999', cy: 648  },
+  { name: 'rnd overhead',   color: '#2a6677', cy: 475  },
+  { name: 'post-render',    color: '#668899', cy: 1443 },
+];
+const IDLE_COLOR = '#1f5c3a';
+
+let frame = 'odd';     // 'odd' | 'even'
+let view  = 'naive';   // 'naive' | 'instr' | 'space'
+
+function logicBlocks() { return frame === 'odd' ? ODD_LOGIC : EVEN_LOGIC; }
+
+// Build the timeline: [ logic ] [ idle/VSYNC-wait ] [ render ]
+function buildSegments() {
+  const logic = logicBlocks();
+  const logicCy  = logic.reduce((s, b) => s + b.cy, 0);
+  const renderCy = RENDER.reduce((s, b) => s + b.cy, 0);
+  const idleCy   = BUDGET - logicCy - renderCy;
+  const segs = [];
+  let x = 0;
+  for (const b of logic)  { segs.push({ ...b, kind: 'work', start: x, end: x + b.cy }); x += b.cy; }
+  const idleStart = x;
+  segs.push({ name: 'VSYNC wait (tight poll)', color: IDLE_COLOR, kind: 'idle', start: x, end: x + idleCy }); x += idleCy;
+  for (const b of RENDER) { segs.push({ ...b, kind: 'work', start: x, end: x + b.cy }); x += b.cy; }
+  return { segs, logicCy, renderCy, idleCy, idleStart, idleEnd: idleStart + idleCy, workCy: logicCy + renderCy };
+}
+
+// HSYNC tick classification (naive / instr views)
+function classify(mode, segs) {
+  const ticks = [];
+  for (let i = 0; i < HSYNC; i++) ticks.push({ cy: i * ROW_CY, caught: false });
+  for (const seg of segs) {
+    const inSeg = ticks.filter(t => t.cy >= seg.start && t.cy < seg.end);
+    if (seg.kind === 'idle')      inSeg.forEach(t => t.caught = true);
+    else if (mode === 'instr')    inSeg.forEach(t => t.caught = true);
+    else if (inSeg.length)        inSeg[inSeg.length - 1].caught = true;  // one per block
+  }
+  return ticks;
+}
+
+// Sample-spacing evaluation (space view): which of the 16 target slots get fresh data?
+function evalSpacing(model) {
+  const { segs, idleStart, idleEnd } = model;
+  const boundaries = new Set([0]);
+  for (const s of segs) { boundaries.add(s.start); boundaries.add(s.end); }
+  const bArr = [...boundaries];
+  const slots = [];
+  for (let k = 0; k < TARGET_SPF; k++) {
+    const a = k * TARGET_CY, b = (k + 1) * TARGET_CY;
+    const hasBoundary = bArr.some(x => x > a && x < b);
+    const overlapsIdle = idleStart < b && idleEnd > a;
+    slots.push({ a, b, served: hasBoundary || overlapsIdle });
+  }
+  const pierce = [...logicBlocks(), ...RENDER].filter(blk => blk.cy > TARGET_CY);
+  return { slots, pierce };
+}
+
+// ── Drawing ─────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const LEFT = 60, RIGHT = 20;
+const chartW = canvas.width - LEFT - RIGHT;
+const TICK_Y = 34, TICK_H = 26;
+const BAR_Y  = 78, BAR_H  = 64;
+const CAD_Y  = 188, CAD_H = 40;
+const AX_Y   = BAR_Y + BAR_H;
+function cx(cy) { return LEFT + (cy / BUDGET) * chartW; }
+
+function draw() {
+  const model = buildSegments();
+  const { segs, idleStart, idleEnd, idleCy, workCy } = model;
+
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ── Top lane ──
+  ctx.font = '11px Menlo, Consolas, monospace';
+  ctx.fillStyle = '#888';
+  ctx.textAlign = 'left';
+
+  if (view === 'space') {
+    ctx.fillText('Sample-spacing target — one fresh DAC write per 1,375cy slot (16/frame). Red = no poll point in slot.', LEFT, TICK_Y - 8);
+    const { slots } = evalSpacing(model);
+    for (let k = 0; k < TARGET_SPF; k++) {
+      const x = cx(k * TARGET_CY);
+      ctx.strokeStyle = '#445';
+      ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, TICK_Y); ctx.lineTo(x, AX_Y); ctx.stroke();
+      ctx.setLineDash([]);
+      // slot served/starved chip in the tick lane
+      ctx.fillStyle = slots[k].served ? '#00ff88' : '#ff4444';
+      ctx.globalAlpha = slots[k].served ? 0.85 : 0.9;
+      ctx.fillRect(cx(slots[k].a) + 1, TICK_Y + 6, cx(slots[k].b) - cx(slots[k].a) - 2, TICK_H - 12);
+      ctx.globalAlpha = 1;
+    }
+  } else {
+    const head = view === 'instr'
+      ? 'HSYNC ticks (262/frame) — instrumented: poll injected every ≤84cy, every tick caught'
+      : 'HSYNC ticks (262/frame, one every ~84cy) — green = sample written, red = DAC holds stale';
+    ctx.fillText(head, LEFT, TICK_Y - 8);
+    const ticks = classify(view, segs);
+    for (const t of ticks) {
+      ctx.strokeStyle = t.caught ? '#00ff88' : '#7a2230';
+      ctx.globalAlpha = t.caught ? 0.95 : 0.8; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx(t.cy), TICK_Y); ctx.lineTo(cx(t.cy), TICK_Y + TICK_H); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ── Timeline bar ──
+  const pierceSet = new Set(view === 'space' ? evalSpacing(model).pierce.map(b => b.name) : []);
+  for (const seg of segs) {
+    const x0 = cx(seg.start), x1 = cx(seg.end);
+    ctx.fillStyle = seg.color;
+    ctx.fillRect(x0, BAR_Y, x1 - x0, BAR_H);
+    if (seg.kind === 'idle') {
+      ctx.strokeStyle = '#3fae72'; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+      for (let hx = x0; hx < x1; hx += 7) { ctx.beginPath(); ctx.moveTo(hx, BAR_Y); ctx.lineTo(hx + BAR_H, BAR_Y + BAR_H); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 1;
+    ctx.strokeRect(x0, BAR_Y, x1 - x0, BAR_H);
+    // highlight piercing blocks in space view
+    if (pierceSet.has(seg.name)) {
+      ctx.strokeStyle = '#ff3344'; ctx.lineWidth = 3;
+      ctx.strokeRect(x0 + 1, BAR_Y + 1, x1 - x0 - 2, BAR_H - 2);
+      // proposed split marker(s) at midpoints
+      const n = Math.ceil(seg.cy / TARGET_CY);
+      ctx.strokeStyle = '#ffdd55'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      for (let i = 1; i < n; i++) {
+        const sx = cx(seg.start + (seg.cy * i / n));
+        ctx.beginPath(); ctx.moveTo(sx, BAR_Y - 6); ctx.lineTo(sx, BAR_Y + BAR_H + 6); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ff8888'; ctx.font = 'bold 9px Menlo, Consolas, monospace'; ctx.textAlign = 'center';
+      ctx.fillText('✂ split', (x0 + x1) / 2, BAR_Y - 8);
+    }
+  }
+  // idle label
+  ctx.fillStyle = '#aaffcc'; ctx.font = 'bold 11px Menlo, Consolas, monospace'; ctx.textAlign = 'center';
+  ctx.save();
+  ctx.translate((cx(idleStart) + cx(idleEnd)) / 2, BAR_Y + BAR_H / 2);
+  ctx.fillText('VSYNC wait', 0, -4);
+  ctx.fillText(Math.round(idleCy / ROW_CY) + ' rows free', 0, 10);
+  ctx.restore();
+
+  // ── Cycle axis ──
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.font = '10px Menlo, Consolas, monospace';
+  ctx.fillStyle = '#777'; ctx.textAlign = 'center';
+  for (let cy = 0; cy <= BUDGET; cy += 2000) {
+    const x = cx(cy);
+    ctx.beginPath(); ctx.moveTo(x, AX_Y); ctx.lineTo(x, AX_Y + 4); ctx.stroke();
+    ctx.fillText((cy / 1000).toFixed(0) + 'K', x, AX_Y + 16);
+  }
+  ctx.fillStyle = '#888';
+  ctx.fillText('CPU cycles within one frame  (0 → 22,000 = one 60Hz VSYNC period)', LEFT + chartW / 2, AX_Y + 32);
+
+  // ── Bottom strip ──
+  ctx.fillStyle = '#888'; ctx.textAlign = 'left'; ctx.font = '11px Menlo, Consolas, monospace';
+  if (view === 'space') {
+    ctx.fillText('Target slots served (green) vs starved (red) by current block structure:', LEFT, CAD_Y - 8);
+    const { slots } = evalSpacing(model);
+    for (const s of slots) {
+      ctx.fillStyle = s.served ? '#13321f' : '#3a1414';
+      ctx.fillRect(cx(s.a), CAD_Y, cx(s.b) - cx(s.a) - 1, CAD_H);
+      ctx.strokeStyle = s.served ? '#00ff88' : '#ff4444'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx(s.a) + 1, CAD_Y + 1, cx(s.b) - cx(s.a) - 3, CAD_H - 2);
+    }
+  } else {
+    ctx.fillText('Resulting sample cadence — where the DAC actually gets fresh data:', LEFT, CAD_Y - 8);
+    ctx.fillStyle = '#11111e'; ctx.fillRect(LEFT, CAD_Y, chartW, CAD_H);
+    ctx.strokeStyle = '#2a2a4e'; ctx.strokeRect(LEFT, CAD_Y, chartW, CAD_H);
+    const ticks = classify(view, segs);
+    for (const t of ticks) {
+      if (!t.caught) continue;
+      ctx.strokeStyle = '#00ff88'; ctx.globalAlpha = 0.9; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx(t.cy), CAD_Y + 2); ctx.lineTo(cx(t.cy), CAD_Y + CAD_H - 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawStats(model);
+}
+
+function drawStats(model) {
+  const { workCy, idleCy } = model;
+  const statsEl = document.getElementById('stats');
+  const frameName = frame === 'odd' ? 'odd (collisions + gravity)' : 'even (Jovian AI + gravity)';
+
+  if (view === 'space') {
+    const { slots, pierce } = evalSpacing(model);
+    const starved = slots.filter(s => !s.served).length;
+    const pierceList = pierce.map(b => `<code>${b.name}</code> ${b.cy.toLocaleString()}cy (→ ${Math.ceil(b.cy/TARGET_CY)} chunks)`).join(', ');
+    statsEl.innerHTML = `
+      <span class="big ok">Sample-spacing evaluation — target 16 samples/frame = one fresh write per ${TARGET_CY.toLocaleString()}cy.</span><br>
+      <span style="color:#aaa">Frame shown: ${frameName}.</span><br><br>
+      <span class="over">Target slots starved: ${starved} of ${TARGET_SPF}</span> — caused entirely by blocks that run longer than one slot without a poll point.<br>
+      <span class="over">Blocks that pierce the ${TARGET_CY.toLocaleString()}cy line this frame:</span> ${pierceList || 'none'}.<br><br>
+      <strong>The whole job:</strong> across the even/odd cycle only <span class="ok">four task types</span> ever pierce the line —
+      <code>collisions</code> (1,833, odd), <code>jov-think</code> (1,449, even), <code>bg-jov</code> (2,000, both),
+      <code>post-render</code> (1,443, both). Each needs just <strong>one</strong> split (all are &lt; 2× the slot).
+      Three split naturally at entity granularity: <code>bg-jov</code> → per-Jovian (3×~667cy),
+      <code>draw-jovians</code> is already a 3-Jovian <code>DO/LOOP</code>, <code>post-render</code> → between sub-tasks,
+      <code>collisions</code> → by target pair. Only <code>jov-think</code> (sequential AI) resists chunking —
+      bracket it with a sample before/after and accept one ~1,449cy gap (it runs on ≤one Jovian per frame anyway).<br><br>
+      Yellow dashes mark where a single injected <code>snd-poll</code> turns each red slot green. Cost: ~4 polls × ${POLL_CY}cy
+      = <code>~${(4*POLL_CY)}cy/frame</code>. No inner-loop surgery, no interrupt.
+    `;
+  } else if (view === 'naive') {
+    const ticks = classify('naive', model.segs);
+    const caught = ticks.filter(t => t.caught).length;
+    const idleRows = Math.round(idleCy / ROW_CY);
+    const longest = [...logicBlocks(), ...RENDER].reduce((m, b) => b.cy > m.cy ? b : m);
+    statsEl.innerHTML = `
+      <span class="big over">Naive cooperative polling — poll only at the natural yield points between Forth words.</span><br>
+      <span style="color:#aaa">Frame shown: ${frameName}.</span><br><br>
+      <span class="ok">fresh DAC writes: ${caught}</span> &nbsp;·&nbsp;
+      <span class="over">stale (held): ${HSYNC - caught} (${Math.round((HSYNC-caught)/HSYNC*100)}%)</span> of ${HSYNC} HSYNC ticks.<br>
+      Of the ${caught} fresh writes, <strong>${idleRows}</strong> come from the single contiguous VSYNC-wait gap and only
+      <strong>${caught - idleRows}</strong> (~one per block) land across the ${Math.round(workCy/ROW_CY)} rows of game work.<br>
+      Worst-case freeze: <code>${longest.name}</code> = ${longest.cy.toLocaleString()}cy =
+      <span class="over">${Math.round(longest.cy/ROW_CY)} rows ≈ ${Math.round(longest.cy/ROW_CY*ROW_US)}µs</span> with the DAC held.<br><br>
+      Plenty of <em>total</em> headroom (${Math.round(idleCy/BUDGET*100)}% idle) but it's <span class="over">bunched into one block</span> —
+      that imposes a <span class="over">60Hz amplitude envelope</span> on any tone. But note: the chart's HSYNC grid is finer than sound needs.
+      Switch to <strong>Sample-spacing eval</strong> for the realistic target (16/frame), where the problem shrinks to four blocks.
+    `;
+  } else {
+    const injected = Math.round(workCy / ROW_CY);
+    const oh = injected * POLL_CY;
+    statsEl.innerHTML = `
+      <span class="big ok">Instrumented polling — a <code>snd-poll</code> in every CODE word so no run exceeds one HSYNC row.</span><br>
+      <span style="color:#aaa">Frame shown: ${frameName}.</span><br><br>
+      All ${HSYNC} ticks caught → uniform ${Math.round(HSYNC*60/1000*10)/10}kHz. <strong>Cost:</strong> ~${injected} polls × ${POLL_CY}cy =
+      <code>${oh.toLocaleString()}cy/frame</code> (frame → ${(workCy+oh).toLocaleString()}cy, ${Math.round((workCy+oh)/BUDGET*100)}% of budget).<br><br>
+      This is the <em>overkill</em> end: at the measured ${POLL_CY}cy/emit it now <span class="over">blows the budget</span>,
+      catching all 15.7kHz is far more than bleep audio needs, and it forces polls inside hot inner loops. The
+      <strong>Sample-spacing eval</strong> view shows the right target — 16/frame, four blocks, ~${4*POLL_CY}cy/frame.
+    `;
+  }
+}
+
+// ── Legend ──
+const legendEl = document.getElementById('legend');
+function legend(color, label) {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<div class="legend-swatch" style="background:${color}"></div>${label}`;
+  legendEl.appendChild(item);
+}
+legend('#00ff88', 'served / sample written');
+legend('#ff4444', 'starved / DAC stale');
+legend('#66aa44', 'pre-VSYNC game logic');
+legend('#55bbdd', 'post-VSYNC render');
+legend(IDLE_COLOR, 'VSYNC-wait idle (tight-pollable)');
+legend('#ff3344', 'block pierces 1,375cy line');
+
+// ── Buttons ──
+function wire(id, set, val, group) {
+  document.getElementById(id).onclick = () => {
+    set(val);
+    for (const b of group) document.getElementById(b[0]).classList.toggle('active', b[1] === val);
+    draw();
+  };
+}
+const FGROUP = [['f-odd','odd'],['f-even','even']];
+const VGROUP = [['v-naive','naive'],['v-instr','instr'],['v-space','space']];
+wire('f-odd',  v => frame = v, 'odd',  FGROUP);
+wire('f-even', v => frame = v, 'even', FGROUP);
+wire('v-naive', v => view = v, 'naive', VGROUP);
+wire('v-instr', v => view = v, 'instr', VGROUP);
+wire('v-space', v => view = v, 'space', VGROUP);
+
+draw();
+</script>
+
+</body>
+</html>

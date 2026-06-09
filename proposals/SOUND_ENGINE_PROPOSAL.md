@@ -2,6 +2,10 @@
 
 *May 2026 — Paul Cunningham + Claude*
 *Revised 2026-05-16 after the design session that picked the HSYNC IRQ path.*
+*Revised 2026-06-09: the HSYNC-FIRQ premise is a hardware error (HSYNC is on
+IRQ, not FIRQ). See "Revision: HSYNC is IRQ — cooperative sub-frame scheduling"
+below, which supersedes the Option C recommendation. Companion chart:
+`proposals/hsync_polling_budget_chart.html`.*
 
 ## Why this exists
 
@@ -123,6 +127,136 @@ VSYNC fires at 60 Hz (PIA0 CB1). Useful as a *clock source* for
 advancing music-sequencer state (note → next note, envelope step),
 but 60 Hz is far below audio rates — VSYNC alone cannot drive a
 tone. A complement to C, not a replacement.
+
+## Revision (2026-06-09): HSYNC is IRQ — cooperative sub-frame scheduling
+
+The Option C recommendation rests on a hardware error. The proposal claims
+"FIRQ (not IRQ) is the right vector" for HSYNC and the entire 7,074 cy/frame
+cost model assumes FIRQ's cheap 10-cycle entry. **HSYNC does not fire FIRQ.**
+The in-tree technical reference is unambiguous:
+
+- PIA0 / U8 (`$FF00-$FF03`): CA1 = HSYNC, CB1 = VSYNC — both wired to the CPU
+  **IRQ** line (`coco-guides/coco_technical_reference.txt:4775`,
+  `coco-guides/vdg-modes.md:180-181`).
+- PIA1 / U4 (`$FF20-$FF23`): CB1 = cartridge — the only stock **FIRQ** source
+  (`coco_technical_reference.txt:4856`).
+
+You cannot reroute HSYNC to FIRQ in software. On IRQ the CPU auto-stacks the
+full 12-byte machine state, so the honest per-line cost is ~19 cy entry +
+~10 cy body + ~15 cy RTI ≈ **~44 cy — even on a line where the handler decides
+"not my turn" and bails.** At 262 lines that is **~11,500 cy/frame just to enter
+and leave the handler**, before any sound work — ~52% of an R0-high frame, gone.
+
+This kills the per-line interrupt approach and reframes the design:
+
+- **"Output sound on only 1/3 of calls" saves work, not the tax.** PIA0 can't
+  deliver every 3rd HSYNC; you take all 262 and skip-count in software, paying
+  the ~44 cy entry on every skipped line too.
+- **Interrupt off-slots are negative-value real estate.** Moving any existing
+  main-loop task into an IRQ slot makes it *more* expensive — the main loop has
+  no per-call entry tax. IRQ is only worth its cost for work that must *preempt*,
+  and essentially nothing in a frame-locked CoCo game does.
+
+### Cooperative cyclic executive — the viable path (revised recommendation)
+
+What the per-line interrupt was reaching for — regular sub-frame cadence — is
+better delivered **cooperatively**, with zero interrupt infrastructure. The
+main loop's phase structure *is* the schedule; you place `snd-poll` calls at
+phase boundaries. Three facts make this small:
+
+1. **No kernel change.** Cooperative polling reads `$FF01` / writes `$FF20`
+   directly from a library CODE word. No FIRQ vector, no `kvar-firq`, no
+   `ORCC`/`ANDCC` unmask dance. `async-sound.fs` is self-contained.
+
+2. **Don't target every HSYNC.** Bleep/bloop audio needs ~16-32 samples/frame
+   (#485 / space-warp issue 485): 480-720 Hz square ceiling. That is a fresh
+   DAC write every **~700-1,375 cy**, not every 84 cy. The constraint becomes
+   *"no gap between consecutive `snd-poll`s exceeds ~1,375 cy."*
+
+3. **Only four task types pierce that line.** Across the even/odd frame cycle:
+   `collisions` (1,833 cy, odd), `jov-think` (1,449 cy, even), `bg-jov`
+   (2,000 cy, both), `post-render` (1,443 cy, both) — three in any given frame.
+   Each is < 2× the slot, so each needs exactly **one** split. Three split
+   naturally at entity granularity (`bg-jov` → per-Jovian 3×~667 cy;
+   `draw-jovians` is already a 3-Jovian `DO/LOOP`; `post-render` → between
+   sub-tasks; `collisions` → by target pair). Only `jov-think` (sequential AI)
+   resists chunking — bracket it with a sample before/after and accept one
+   ~1,449 cy gap (it runs on ≤ one Jovian per frame). Total fix: ~4 emit-path
+   polls × **103 cy measured** (`fc.py --cycles`, issue #508) ≈ **~412 cy/frame**
+   (a fast-path `snd-poll` that finds no new HSYNC row returns in ~22 cy). Note
+   this corrects the earlier optimistic ~17 cy/poll estimate — the real emit
+   path is the full phase-advance + wavetable lookup + DAC write + NEXT.
+
+4. **Piggyback the dense cluster on `wait-past-row`.** Space Warp already spins
+   on the HSYNC flag once per frame (`spacewarp.fs:5159` →
+   `kernel.asm:1757 WAIT-PAST-ROW`) to beam-chase before drawing. That spin
+   loops `LDA $FF01 / BPL / LDA $FF00 / DECB` for ~70-190 rows doing nothing
+   useful — the ideal venue for a tight `snd-fill` burst that writes one
+   HSYNC-locked sample per row, near-free.
+
+See `proposals/hsync_polling_budget_chart.html` (Sample-spacing eval view) for
+the visual: the four piercing blocks and the single poll point each one needs.
+
+### Space Warp scheduling — evaluation
+
+Space Warp is already a capable **frame-level** scheduler: even/odd phase split
+(collisions odd, gravity both), round-robin Jovian think-slots (skip=1, one
+Jovian per even frame), MOD-4 gravity, MOD-8 BG slots, MOD-16 repair. That
+staggering is exactly why the peak frame sits at ~13,091 cy instead of spiking
+when everything coincides. The limitation sound exposes is that the schedule is
+**frame-atomic** — within a frame every word runs to completion, no sub-frame
+yielding. For video that is correct (everything is VSYNC-locked). Audio is the
+first workload that cares about *intra-frame* regularity, so the sound engine
+adds a **second, finer tier beneath** the existing frame tier: keep the
+frame-level round-robin as-is; add `snd-poll` at phase boundaries (already
+~400-1,400 cy apart) and split only the four over-line blocks.
+
+### `async-sound.fs` — library word set
+
+Pure library, no kernel dependency. State cells are DP-located (`$0050-$007F`,
+free per the memory map) so CODE words reach them in 4 cy.
+
+| Word | Stack | Kind | Role |
+|------|-------|------|------|
+| `snd-async-init` | `( -- )` | CODE | PIA mux → 6-bit DAC (reuse `lib/sound.fs` `snd-init` body) |
+| `snd-note` | `( freq amp frames -- )` | `:` | Start a voice: `freq>inc` → `snd-inc`, set amp + frame count, reset phase, mark active. Returns immediately |
+| `snd-stop` | `( -- )` | `:` | Silence: clear active, frames→0, DAC to mid-scale |
+| `snd-frame` | `( -- )` | `:` | Per-VSYNC housekeeping: decrement `snd-frames`, auto-stop at 0, step envelope. Call once/frame |
+| `snd-playing?` | `( -- f )` | `:` | Is a voice active (for game logic / gating) |
+| `snd-poll` | `( -- )` | **CODE** | The workhorse. If a fresh HSYNC has passed, advance `snd-phase` by `snd-inc`, look up `snd-wave[phase_hi]`, shift by `snd-amp`, write `$FF20`. Sprinkled at phase boundaries; fast-path return when no new row |
+| `snd-fill` | `( n -- )` | **CODE** | Tight loop: emit `n` HSYNC-locked samples back-to-back. For the `wait-past-row` spin / VSYNC-wait tail (the dense cluster) |
+| `snd-pitch!` | `( freq -- )` | `:` | Live retune without restarting the note (continuous sweeps) |
+| `snd-amp!` | `( amp -- )` | `:` | Live amplitude change (fades, accents) |
+| `freq>inc` | `( freq -- inc )` | `:` | Hz → 16-bit phase increment for the chosen sample rate |
+| `snd-wave` | `( -- addr )` | DATA | 256-byte wavetable (sine v1) via `DATA[PY`; square is special-cased to drop the table |
+
+Internal DP cells: `snd-cur` (byte, current sample), `snd-phase` (16b),
+`snd-inc` (16b, pitch), `snd-amp` (byte, shift), `snd-frames` (16b, remaining),
+`snd-active` (flag), `snd-last-hs` (byte, last HSYNC flag state for edge detect).
+
+The main loop touches only `snd-note` / `snd-stop` / `snd-frame` (events +
+once-per-frame). `snd-poll` / `snd-fill` are the sub-frame placements the game
+sprinkles at the four split points and into the `wait-past-row` spin. Multi-voice
+(v2) clones the state block and sums candidates in `snd-poll` before the DAC write.
+
+**Design decision — resolved as implemented (issue #508).** The shipped
+`async-sound.fs` splits the two roles instead of forcing one word to do both:
+
+- `snd-poll` is **HSYNC-edge-gated, non-blocking**: it emits one sample only if
+  the `$FF01` flag shows a new scan line has elapsed (cleared via `$FF00`),
+  otherwise returns in ~22 cy. It never blocks and never catches up more than
+  one row, so it is safe to sprinkle anywhere; its effective sample rate is
+  whatever the call cadence achieves.
+- `snd-fill ( n -- )` is **fully HSYNC-locked, blocking**: it emits exactly `n`
+  evenly-spaced samples, one per scan line, for the VSYNC-wait / `wait-past-row`
+  spin where the CPU would idle anyway. This is the jitter-free path.
+
+`freq>inc` converts Hz assuming the full 15,734 Hz (`snd-fill`) rate; sparser
+`snd-poll` cadence lowers the effective rate and pitch proportionally, so a
+voice driven mainly by `snd-poll` is calibrated per use site. This sidesteps the
+"pitch drifts with frame content" problem by making the steady, even samples
+come from `snd-fill` in the idle spin and treating `snd-poll` as opportunistic
+fill-in.
 
 ## Why C, in detail
 

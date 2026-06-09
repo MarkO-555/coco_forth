@@ -1487,6 +1487,111 @@ CODE fast-plot   ( x y -- )
         </table>
       </div>
 
+      <!-- async-sound.fs -->
+      <div class="ref-section">
+        <h3>Asynchronous Sound</h3>
+        <p class="lib-path">INCLUDE lib/async-sound.fs</p>
+        <p>A <em>non-blocking</em> companion to <code>lib/sound.fs</code>. Where
+        <code>snd-tone</code> &amp; friends stop the caller for the whole length
+        of a note, this engine never blocks: a voice is a phase-accumulator
+        wavetable oscillator whose state lives in variables, and the program
+        advances it a sample at a time from inside its own main loop, so a tone
+        keeps playing across frames while the game runs.</p>
+        <p>It needs <strong>no kernel changes</strong>. <code>snd-poll</code>
+        reads the HSYNC flag (bit&nbsp;7 of <code>$FF01</code>, cleared by
+        reading <code>$FF00</code> &mdash; the same flag the kernel&rsquo;s
+        <code>wait-past-row</code> uses) and writes the 6-bit DAC at
+        <code>$FF20</code> directly. This sidesteps the only audio-rate
+        interrupt on a stock CoCo&nbsp;1/2 (HSYNC, which is wired to
+        <em>IRQ</em>, not FIRQ, and would cost ~11,500&nbsp;cy/frame in entry
+        tax). See <code>proposals/SOUND_ENGINE_PROPOSAL.md</code>.</p>
+        <p><strong>Driving model.</strong> Call <code>snd-note</code> on an
+        event, <code>snd-frame</code> once per VSYNC to age the note, and emit
+        samples sub-frame two ways: <code>snd-fill</code> produces a dense,
+        perfectly-even HSYNC-locked burst (ideal inside a VSYNC-wait spin),
+        while <code>snd-poll</code> is sprinkled at main-loop phase boundaries
+        and emits at most one sample per call. <code>freq&gt;inc</code> assumes
+        the full <code>snd-fill</code> sample rate (15,734&nbsp;Hz); sparser
+        <code>snd-poll</code> cadence lowers the effective pitch
+        proportionally.</p>
+        <table class="ref-table">
+          <tr>
+            <th style="width:110px">Word</th>
+            <th style="width:180px">Stack</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td class="word-name">snd-async-init</td>
+            <td class="stack-effect">( -- )</td>
+            <td>One-time setup: route the PIA audio path to the 6-bit DAC and cache the wavetable address. Call once before any note.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-note</td>
+            <td class="stack-effect">( freq amp frames -- )</td>
+            <td>Start a voice and return immediately. <code>freq</code> = pitch in Hz, <code>amp</code> = amplitude as an arithmetic right-shift (0 = full, 1 = half&hellip;), <code>frames</code> = duration in VSYNC frames.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-stop</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Silence the voice now and hold the DAC at mid-rail.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-frame</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Per-VSYNC housekeeping: age the note by one frame and auto-stop at zero. Call once per frame.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-poll</td>
+            <td class="stack-effect">( -- )</td>
+            <td>Emit one wavetable sample to the DAC <em>if</em> a new HSYNC scan line has elapsed; otherwise return at once (~22&nbsp;cy). Non-blocking; preserves IP/DSP/RSP, so it is safe to sprinkle anywhere. <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-fill</td>
+            <td class="stack-effect">( n -- )</td>
+            <td>Emit exactly <code>n</code> evenly-spaced samples, one per HSYNC scan line, blocking until done &mdash; a jitter-free burst for a VSYNC-wait / <code>wait-past-row</code> spin. <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-pitch!</td>
+            <td class="stack-effect">( freq -- )</td>
+            <td>Retune the running voice (Hz) without restarting it &mdash; for continuous sweeps.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-amp!</td>
+            <td class="stack-effect">( amp -- )</td>
+            <td>Change the running voice&rsquo;s amplitude (right-shift) without restarting it &mdash; for fades/accents.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-slide!</td>
+            <td class="stack-effect">( delta -- )</td>
+            <td>Set a signed per-frame pitch slide that <code>snd-frame</code> applies automatically (negative = falling). A maser/zap is <code>snd-note</code> + a negative <code>snd-slide!</code>; the scheduler does nothing else per frame.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-playing?</td>
+            <td class="stack-effect">( -- flag )</td>
+            <td>True while a voice is active (its frame count is non-zero).</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-wave</td>
+            <td class="stack-effect">( -- addr )</td>
+            <td>Address of the 256-byte wavetable (one cycle of a sine, signed deviation), built at compile time with <code>DATA[PY</code>.</td>
+          </tr>
+          <tr>
+            <td class="word-name">freq&gt;inc</td>
+            <td class="stack-effect">( freq -- inc )</td>
+            <td>Convert a frequency in Hz to the per-sample phase increment, assuming the full <code>snd-fill</code> sample rate.</td>
+          </tr>
+        </table>
+        <pre class="forth">snd-async-init
+440 0 120 snd-note            \ 440 Hz, full volume, 120 frames
+BEGIN
+  ... game work ...  snd-poll  \ sprinkle at phase boundaries
+  ... more work ...  snd-poll
+  240 snd-fill                 \ dense, even burst in the VSYNC-wait
+  snd-frame                    \ age the note once per frame
+  snd-playing? 0=
+UNTIL</pre>
+      </div>
+
       <!-- dac.fs -->
       <div class="ref-section">
         <h3>Joystick / DAC</h3>

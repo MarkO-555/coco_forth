@@ -10,6 +10,7 @@ Each file shows a description list (what each word does) followed by a cost tabl
 
 ## Files
 
+- [`async-sound.fs`](#async-soundfs)
 - [`beam.fs`](#beamfs)
 - [`bye.fs`](#byefs)
 - [`cg-text.fs`](#cg-textfs)
@@ -30,6 +31,54 @@ Each file shows a description list (what each word does) followed by a cost tabl
 - [`sprite.fs`](#spritefs)
 - [`trig.fs`](#trigfs)
 - [`vdg.fs`](#vdgfs)
+
+---
+
+## `async-sound.fs`
+
+non-blocking (cooperative) DAC sound for the CoCo
+
+**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-playing?, snd-poll, snd-fill, freq>inc, snd-wave
+
+**Requires:** kernel primitives only (* /mod 2* @ ! c! ...). No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
+
+- **`snd-phase`**
+- **`snd-inc`**
+- **`snd-amp`**
+- **`snd-frames`**
+- **`snd-wave-base`**
+- **`snd-slide`**
+- **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
+- **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin.
+- **`freq>inc`**
+- **`snd-async-init`** — one-time setup: init the DAC path and cache the wavetable address.
+- **`snd-note`** — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
+- **`snd-stop`** — silence the voice now and hold the DAC at midpoint.
+- **`snd-frame`** — per-VSYNC housekeeping: age the note one frame, auto-stop at zero.
+- **`snd-pitch!`** — retune the running voice without restarting it.
+- **`snd-amp!`** — change the running voice amplitude (right-shift) without restarting.
+- **`snd-slide!`** — set a signed per-frame pitch slide (negative = falling, e.g. a zap).
+- **`snd-playing?`** — true if a voice is currently active.
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `snd-phase` |  | var |  |  |
+| `snd-inc` |  | var |  |  |
+| `snd-amp` |  | var |  |  |
+| `snd-frames` |  | var |  |  |
+| `snd-wave-base` |  | var |  |  |
+| `snd-slide` |  | var |  |  |
+| `snd-poll` | `( -- )` | CODE |  |  |
+| `snd-fill` | `( n -- )` | CODE |  |  |
+| `freq>inc` | `( freq -- inc )` | colon |  |  |
+| `snd-async-init` | `( -- )` | colon |  |  |
+| `snd-note` | `( freq amp frames -- )` | colon |  |  |
+| `snd-stop` | `( -- )` | colon |  |  |
+| `snd-frame` | `( -- )` | colon |  |  |
+| `snd-pitch!` | `( freq -- )` | colon |  |  |
+| `snd-amp!` | `( amp -- )` | colon |  |  |
+| `snd-slide!` | `( delta -- )` | colon |  |  |
+| `snd-playing?` | `( -- f )` | colon |  |  |
 
 ---
 
