@@ -1571,9 +1571,29 @@ CODE fast-plot   ( x y -- )
             <td>True while a voice is active (its frame count is non-zero).</td>
           </tr>
           <tr>
+            <td class="word-name">snd-rest</td>
+            <td class="stack-effect">( frames -- )</td>
+            <td>Hold silence for <code>frames</code> frames while the voice stays &ldquo;playing&rdquo; (increment 0 + amplitude collapsed to mid-rail) &mdash; the async analog of a pause, for gaps between notes.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-waveform</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Point the oscillator at a 256-byte signed wavetable. Four are provided, each pushing its address: <code>snd-wave</code> (sine), <code>snd-square</code>, <code>snd-saw</code>, <code>snd-tri</code>.</td>
+          </tr>
+          <tr>
             <td class="word-name">snd-wave</td>
             <td class="stack-effect">( -- addr )</td>
-            <td>Address of the 256-byte wavetable (one cycle of a sine, signed deviation), built at compile time with <code>DATA[PY</code>.</td>
+            <td>Address of the default sine wavetable (256 bytes, signed deviation, built at compile time with <code>DATA[PY</code>). Companions: <code>snd-square</code>, <code>snd-saw</code>, <code>snd-tri</code>.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-noise-fill</td>
+            <td class="stack-effect">( n -- )</td>
+            <td>Emit <code>n</code> pseudo-random noise samples (16-bit galois LFSR), blocking. Pitch is set by <code>snd-noise-div</code> (HSYNC lines held per sample &mdash; higher = lower rumble); level by <code>snd-amp</code> (ramp it up across calls for a decaying boom). <em>CODE word.</em></td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-noise-div</td>
+            <td class="stack-effect">( -- addr )</td>
+            <td>Variable: HSYNC lines each noise sample is held (&ge;1). 1 = bright hiss (15.7&nbsp;kHz); larger values lower the noise pitch into a rumble.</td>
           </tr>
           <tr>
             <td class="word-name">freq&gt;inc</td>
