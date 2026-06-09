@@ -53,6 +53,21 @@ import math
 bytes((int(124 * math.sin(2 * math.pi * i / 256)) & 0xFF) for i in range(256))
 ]DATA
 
+\ Additional 256-byte signed wavetables, same +/-124 convention. Select one
+\ with snd-waveform; snd-poll/snd-fill read whichever is cached in snd-wave-base.
+\ Square: +124 for the first half, -124 for the second.
+DATA[PY snd-square
+bytes(((124 if i < 128 else -124) & 0xFF) for i in range(256))
+]DATA
+\ Sawtooth: single rising ramp -124..+124 (the wrap is the vertical edge).
+DATA[PY snd-saw
+bytes((int(-124 + i * 248 / 255) & 0xFF) for i in range(256))
+]DATA
+\ Triangle: ramp up for the first half, down for the second.
+DATA[PY snd-tri
+bytes(((int(-124 + i * 248 / 127) if i < 128 else int(124 - (i - 128) * 248 / 127)) & 0xFF) for i in range(256))
+]DATA
+
 \ ── Voice state (one voice; v2 clones this block and sums in snd-poll) ────
 VARIABLE snd-phase       \ 16-bit phase accumulator; high byte = table index
 VARIABLE snd-inc         \ phase increment per emitted sample (sets pitch)
@@ -60,6 +75,8 @@ VARIABLE snd-amp         \ amplitude as an arithmetic right-shift (0 = full)
 VARIABLE snd-frames      \ remaining frames; 0 = idle (voice silent)
 VARIABLE snd-wave-base   \ cached address of snd-wave for the CODE emitters
 VARIABLE snd-slide       \ signed per-frame phase-increment delta (pitch slide; 0 = steady)
+VARIABLE snd-seed        \ 16-bit LFSR state for snd-noise-fill (nonzero)
+VARIABLE snd-noise-div   \ HSYNC lines each noise sample is held (>=1; higher = lower pitch)
 
 \ ── Internal: PIA audio path → 6-bit DAC ─────────────────────────────────
 \ Same canonical control-register values as lib/sound.fs snd-init, kept
@@ -151,6 +168,50 @@ CODE snd-fill  \ ( n -- )
         ;NEXT
 ;CODE
 
+\ ── snd-noise-fill ( n -- )  blocking, n noise samples ────────────────────
+\ Like snd-fill, but each sample is a fresh pseudo-random byte from a 16-bit
+\ galois LFSR (tap $B400) instead of the wavetable. Two knobs shape it:
+\   snd-noise-div  — hold each sample this many HSYNC lines (1 = bright hiss
+\                    at 15.7kHz; higher = lower-pitched rumble)
+\   snd-amp        — amplitude right-shift around the DAC midpoint (0 = full,
+\                    higher = quieter); ramp it up across calls for a decay
+\ Total duration = n * snd-noise-div scan lines. Independent of voice state.
+\ snd-noise-fill — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
+CODE snd-noise-fill  \ ( n -- )
+        PSHS    X               ; save IP (X reused as the per-sample hold counter)
+        LDY     ,U              ; Y = sample count
+        LEAU    2,U
+        CMPY    #0
+        BEQ     @ndone
+        LDA     $FF00           ; clear any stale HSYNC flag
+@nsamp  LDD     FVAR_snd_seed   ; 16-bit galois LFSR step
+        LSRA
+        RORB
+        BCC     @nofb
+        EORA    #$B4            ; tap $B400 (high byte)
+@nofb   STD     FVAR_snd_seed
+        SUBA    #$80            ; high byte -> signed deviation about midpoint
+        LDB     FVAR_snd_amp+1  ; amplitude right-shift (decay)
+        BEQ     @namp0
+@nash   ASRA
+        DECB
+        BNE     @nash
+@namp0  ADDA    #$80            ; recenter
+        ANDA    #$FC            ; A = held DAC value for this sample
+        LDX     FVAR_snd_noise_div  ; hold it for div HSYNC lines (>=1)
+@nhold  LDB     $FF01
+        BPL     @nhold          ; wait for the next HSYNC edge
+        LDB     $FF00           ; clear it
+        STA     $FF20           ; output the held sample
+        LEAX    -1,X
+        BNE     @nhold
+        LEAY    -1,Y
+        BNE     @nsamp
+@ndone
+        PULS    X
+        ;NEXT
+;CODE
+
 \ ── Pitch helper ─────────────────────────────────────────────────────────
 \ inc = freq * 65536 / 15734  ≈  freq * 4.166  =  freq*4 + freq/6.
 \ Kept as integer ops with no 16-bit overflow for freq up to a few kHz.
@@ -165,10 +226,27 @@ CODE snd-fill  \ ( n -- )
 \ snd-async-init — one-time setup: init the DAC path and cache the wavetable address.
 : snd-async-init  ( -- )
   _snd-pia
-  snd-wave snd-wave-base !
+  snd-wave snd-wave-base !  \ default waveform = sine
+  $ACE1 snd-seed !          \ nonzero LFSR seed for noise
+  1 snd-noise-div !         \ default noise pitch = bright (1 line/sample)
   0 snd-frames !
   0 snd-amp !
-  $80 $FF20 c! ;          \ DAC to midpoint (silence)
+  $80 $FF20 c! ;            \ DAC to midpoint (silence)
+
+\ Select the active wavetable (snd-wave, snd-square, snd-saw, snd-tri, or any
+\ 256-byte signed table). Takes effect on the next emitted sample.
+\ snd-waveform — point the oscillator at a 256-byte signed wavetable.
+: snd-waveform  ( addr -- )  snd-wave-base ! ;
+
+\ Hold silence for `frames` frames while keeping the voice "playing" (so the
+\ main loop keeps emitting + aging). The async analog of the old snd-pause:
+\ inc 0 freezes the phase and amp 8 collapses the sample to the DAC midpoint.
+\ snd-rest — hold silence for N frames (a rest between notes).
+: snd-rest  ( frames -- )
+  snd-frames !
+  0 snd-inc !
+  0 snd-slide !
+  8 snd-amp ! ;
 
 \ Start a voice. Returns immediately; the sound is produced by subsequent
 \ snd-poll / snd-fill calls and aged by snd-frame.

@@ -48,10 +48,14 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-frames`**
 - **`snd-wave-base`**
 - **`snd-slide`**
+- **`snd-seed`**
 - **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
 - **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin.
+- **`snd-noise-fill`** — emit n HSYNC-locked pseudo-random DAC samples (white noise).
 - **`freq>inc`**
 - **`snd-async-init`** — one-time setup: init the DAC path and cache the wavetable address.
+- **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable.
+- **`snd-rest`** — hold silence for N frames (a rest between notes).
 - **`snd-note`** — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
 - **`snd-stop`** — silence the voice now and hold the DAC at midpoint.
 - **`snd-frame`** — per-VSYNC housekeeping: age the note one frame, auto-stop at zero.
@@ -68,10 +72,14 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-frames` |  | var |  |  |
 | `snd-wave-base` |  | var |  |  |
 | `snd-slide` |  | var |  |  |
+| `snd-seed` |  | var |  |  |
 | `snd-poll` | `( -- )` | CODE |  |  |
 | `snd-fill` | `( n -- )` | CODE |  |  |
+| `snd-noise-fill` | `( n -- )` | CODE |  |  |
 | `freq>inc` | `( freq -- inc )` | colon |  |  |
 | `snd-async-init` | `( -- )` | colon |  |  |
+| `snd-waveform` | `( addr -- )` | colon |  |  |
+| `snd-rest` | `( frames -- )` | colon |  |  |
 | `snd-note` | `( freq amp frames -- )` | colon |  |  |
 | `snd-stop` | `( -- )` | colon |  |  |
 | `snd-frame` | `( -- )` | colon |  |  |
