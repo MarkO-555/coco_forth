@@ -577,7 +577,7 @@ waveform-table generators for the CoCo sound engine
 
 **Requires:** kernel primitives only (DO/LOOP, *, /MOD, 2*, C!, ...).
 
-- **`/wave`** — Constant: bytes per wavetable. Reserve /wave bytes per generated table.
+- **`/wave`** — Constant: bytes per wavetable. Reserve /wave bytes per table.
 - **`gen-square`** — square wave: +124 first half, -124 second.
 - **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
 - **`gen-tri`** — triangle: ramp up then down.

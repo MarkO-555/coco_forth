@@ -60,6 +60,7 @@ INCLUDE ../../lib/sound.fs
   THEN THEN THEN THEN THEN THEN THEN ;
 
 : main  ( -- )
+  snd-init                          \ configure the audio path once
   init-sin                          \ snd-sin needs the table populated
   cls-black
   banner

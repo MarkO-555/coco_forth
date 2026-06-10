@@ -51,6 +51,7 @@ INCLUDE ../../lib/sound.fs
   THEN THEN THEN THEN THEN THEN THEN THEN THEN ;
 
 : main  ( -- )
+  snd-init                          \ configure the audio path once
   cls-black
   banner
   BEGIN  KEY dispatch  0 UNTIL ;

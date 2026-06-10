@@ -13,9 +13,11 @@
 \ masking individual bits makes the result deterministic regardless of
 \ prior PIA state, so this works in both ROM-mode and all-RAM kernels.
 
-\ ── Internal: PIA setup ─────────────────────────────────────────────────
-\ snd-init configures the audio path once.  snd-tone and snd-noise call
-\ it on every invocation; the cost is 5 byte-stores so it's cheap.
+\ ── PIA setup ───────────────────────────────────────────────────────────
+\ snd-init configures the audio path (6-bit DAC + 1-bit PB1 output) once.
+\ Call it ONCE before using snd-tone/snd-saw/snd-sin/snd-tone1/snd-click1 --
+\ those words assume it has run (they no longer re-init per call).  snd-noise
+\ and snd-noise1 still call snd-init themselves.
 CODE snd-init  \ ( -- )
         LDB     #$34
         STB     $FF01           ; PIA0 CR-A: SEL1=0, data reg, no IRQ
@@ -43,12 +45,7 @@ CODE snd-tone
         PSHS    D               ; stash on return stack
         LDY     ,U              ; Y = duration counter (TOS)
         LEAU    4,U             ; pop both args
-        LDB     #$34
-        STB     $FF01
-        STB     $FF03
-        STB     $FF21
-        LDB     #$3C
-        STB     $FF23
+        ; (audio path configured once by snd-init)
 SNT_LP  LDB     #$FC
         STB     $FF20           ; DAC high
         LDD     ,S
@@ -83,17 +80,7 @@ CODE snd-tone1  \ ( pitch duration -- )
         PSHS    D
         LDY     ,U              ; Y = duration
         LEAU    4,U
-        LDB     #$34
-        STB     $FF01
-        STB     $FF03
-        STB     $FF21
-        LDB     #$30
-        STB     $FF23           ; DDR mode
-        LDB     $FF22
-        ORB     #$02
-        STB     $FF22           ; PB1 = output
-        LDB     #$3C
-        STB     $FF23           ; data mode + sound enable
+        ; (audio path + PB1 output configured once by snd-init)
 SN1_LP  LDB     $FF22
         EORB    #$02
         STB     $FF22           ; toggle 1-bit output
@@ -114,17 +101,7 @@ SN1_D2  SUBD    #1
 
 \ snd-click1 — Single 1-bit toggle; the primitive percussive element.
 CODE snd-click1  \ ( -- )
-        LDB     #$34
-        STB     $FF01
-        STB     $FF03
-        STB     $FF21
-        LDB     #$30
-        STB     $FF23           ; DDR mode
-        LDB     $FF22
-        ORB     #$02
-        STB     $FF22           ; PB1 = output
-        LDB     #$3C
-        STB     $FF23           ; data mode + sound enable
+        ; (audio path + PB1 output configured once by snd-init)
         LDB     $FF22
         EORB    #$02
         STB     $FF22
@@ -166,12 +143,7 @@ CODE snd-saw
         PSHS    D
         LDY     ,U              ; Y = duration (TOS)
         LEAU    6,U             ; pop 3 args
-        LDB     #$34
-        STB     $FF01
-        STB     $FF03
-        STB     $FF21
-        LDB     #$3C
-        STB     $FF23
+        ; (audio path configured once by snd-init)
         CLRB                    ; B = current sample
 SAW_LP  STB     $FF20
         ADDB    2,S             ; B += step (step is at 2,S past pitch)
@@ -203,12 +175,7 @@ CODE snd-sin
         PSHS    D
         LDY     ,U              ; duration (full half-waves to play)
         LEAU    4,U
-        LDB     #$34
-        STB     $FF01
-        STB     $FF03
-        STB     $FF21
-        LDB     #$3C
-        STB     $FF23
+        ; (audio path configured once by snd-init)
 SIN_HALF
         ;; forward: indices 0, 4, 8, ..., 88 (23 samples).  Stride of
         ;; 4 keeps the per-half-wave sample count down so the audible
