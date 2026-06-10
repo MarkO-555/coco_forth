@@ -1299,6 +1299,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Trigonometry</h3>
         <p class="lib-path">INCLUDE lib/datawrite.fs<br>INCLUDE lib/trig.fs</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~250 bytes code, plus the kernel&rsquo;s 91-byte sin table copied into RAM at <code>trig-base</code> by <code>init-sin</code>.</p>
         <p>Lookup-table sine/cosine with 1-degree resolution. Values are
         signed fixed-point (&minus;127 to +127, representing &minus;1.0 to +1.0).</p>
         <table class="ref-table">
@@ -1397,6 +1398,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Sound Effects</h3>
         <p class="lib-path">INCLUDE lib/sound.fs</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~580 bytes code (synchronous effects). Add ~250 bytes for <code>lib/trig.fs</code> if you use <code>snd-sin</code>. These effects block the caller; for non-blocking sound see <em>Asynchronous Sound</em> below.</p>
         <p>Tone, noise and waveform generation via the CoCo&rsquo;s 6-bit DAC
         at <code>$FF20</code>. PIA initialization values come from
         <em>Dungeons of Daggorath</em>&rsquo;s <code>ONCE.ASM</code>; the routines
@@ -1491,6 +1493,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Waveform Tables</h3>
         <p class="lib-path">INCLUDE lib/wavetable.fs</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~360 bytes code (all six generators &mdash; no dead-code elimination, so including the file costs them all). Runtime: 256 bytes per generated wavetable, in RAM you provide (not the binary).</p>
         <p>Generators that fill a 256-byte signed wavetable (-124..+124
         deviation about the DAC midpoint) at <em>any</em> address. Build a table
         into free RAM at startup (e.g. <code>$9200</code> in all-RAM mode), then
@@ -1541,6 +1544,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Asynchronous Sound</h3>
         <p class="lib-path">INCLUDE lib/async-sound.fs</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars). With <code>lib/wavetable.fs</code> the full async engine is ~970 bytes code, plus 256 bytes per runtime wavetable (or zero with algorithmic modes).</p>
         <p>A <em>non-blocking</em> companion to <code>lib/sound.fs</code>. Where
         <code>snd-tone</code> &amp; friends stop the caller for the whole length
         of a note, this engine never blocks: a voice is a phase-accumulator

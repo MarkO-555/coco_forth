@@ -4,6 +4,10 @@
 \
 \ Requires: kernel primitives only (DO/LOOP, *, /MOD, 2*, C!, ...).
 \
+\ Footprint: ~360 bytes code (all six generators; no dead-code elimination, so
+\            including the file costs them all). Runtime: 256 bytes per
+\            generated wavetable, in RAM you provide -- not in the binary.
+\
 \ A wavetable is 256 signed bytes (-124..+124 deviation about the DAC
 \ midpoint).  Generate one into any free RAM at startup, then point the sound
 \ engine at it (snd-waveform).  Generating at runtime keeps ~1KB of tables out

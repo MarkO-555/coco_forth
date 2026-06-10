@@ -5,6 +5,9 @@
 \           sin-data, DUP, DROP, SWAP, OVER, @, !, <, >, 0=,
 \           IF, ELSE, THEN
 \
+\ Footprint: ~250 bytes code, plus the kernel's 91-byte sin table copied into
+\            RAM at trig-base by init-sin.
+\
 \ 91-entry sine table covering 0-90 degrees.  Values are 7-bit
 \ fixed-point: 0 = 0.000, 127 = 1.000 (actually 0.992).
 \ Cosine and full 0-360 range derived by quadrant mirroring.

@@ -43,6 +43,8 @@ non-blocking (cooperative) DAC sound for the CoCo
 
 **Requires:** kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables come from lib/wavetable.fs (gen-sine etc.) — include it too, generate a table, and snd-waveform it before playing. No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 
+**Footprint:** ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars). With lib/wavetable.fs the full async engine is ~970 bytes code, plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
+
 - **`snd-phase`**
 - **`snd-inc`**
 - **`snd-amp`** — amplitude right-shift around the DAC midpoint (0 = full,
@@ -473,6 +475,8 @@ DAC sound library for the CoCo
 
 **Requires:** kernel primitives rng + kvar-seed (for snd-noise), lib/trig.fs init-sin populating trig-base (for snd-sin)
 
+**Footprint:** ~580 bytes code (synchronous effects). Add ~250 bytes for lib/trig.fs if you use snd-sin. These effects block the caller; for non-blocking sound see lib/async-sound.fs.
+
 - **`snd-init`** — Configure PIAs for DAC output (called automatically by snd-tone et al.). CODE word.
 - **`snd-tone`** — Square wave: pitch = inter-toggle delay (lower = higher frequency); duration = toggle-cycle count. CODE word. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~46cy/iter)*
 - **`snd-tone1`** — 1-bit square tone via $FF22 bit 1; pitch/duration like snd-tone. *(loop: ~7cy/iter, loop: ~7cy/iter, loop: ~56cy/iter)*
@@ -535,6 +539,8 @@ Sine/cosine lookup table for angle-based operations
 
 **Requires:** kernel primitives C@, *, +, -, /MOD, NEGATE, RSHIFT, CMOVE, sin-data, DUP, DROP, SWAP, OVER, @, !, <, >, 0=, IF, ELSE, THEN
 
+**Footprint:** ~250 bytes code, plus the kernel's 91-byte sin table copied into RAM at trig-base by init-sin.
+
 - **`init-sin`** — Copy the kernel's sin-data (91 bytes) into trig-base via CMOVE.
 - **`sin`** — Sine of angle (0–360&deg;). Returns &minus;127 to +127.
 - **`cos`** — Cosine of angle (0–360&deg;). Returns &minus;127 to +127.
@@ -580,6 +586,8 @@ waveform-table generators for the CoCo sound engine
 **Provides:** /wave, gen-sine, gen-sine-hq, gen-square, gen-saw, gen-tri
 
 **Requires:** kernel primitives only (DO/LOOP, *, /MOD, 2*, C!, ...).
+
+**Footprint:** ~360 bytes code (all six generators; no dead-code elimination, so including the file costs them all). Runtime: 256 bytes per generated wavetable, in RAM you provide -- not in the binary.
 
 - **`/wave`** — Constant: bytes per wavetable. Reserve /wave bytes per table.
 - **`gen-square`** — square wave: +124 first half, -124 second.

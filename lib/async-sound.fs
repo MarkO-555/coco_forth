@@ -10,6 +10,10 @@
 \           No kvar, no trig table, no kernel patch — snd-poll reads the
 \           HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 \
+\ Footprint: ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars).
+\            With lib/wavetable.fs the full async engine is ~970 bytes code,
+\            plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
+\
 \ ── What this is ────────────────────────────────────────────────────────
 \ The synchronous lib/sound.fs blocks the caller for the whole duration of
 \ a note. This library is the opposite: it never blocks. A voice is a

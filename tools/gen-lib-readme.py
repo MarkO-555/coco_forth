@@ -66,7 +66,7 @@ def parse_header(lines):
     The header ends at the first blank or non-`\\` line.
     """
     short = ""
-    provides, requires = [], []
+    provides, requires, footprint = [], [], []
     current = None  # most recent labelled block, for continuation joining
     started = False
     for line in lines:
@@ -98,6 +98,11 @@ def parse_header(lines):
             provides[-1] += " " + content
         elif is_continuation and current == "requires" and requires:
             requires[-1] += " " + content
+        elif low.startswith("footprint:"):
+            footprint.append(content[10:].strip())
+            current = "footprint"
+        elif is_continuation and current == "footprint" and footprint:
+            footprint[-1] += " " + content
         elif not short:
             # Treat the first plain line as the short description.
             short = content
@@ -106,7 +111,7 @@ def parse_header(lines):
     # Strip "filename.fs — " or "filename.fs - " prefix if the short line
     # opens with the filename plus an em-dash separator.
     short = re.sub(r"^[A-Za-z0-9._/-]+\s*[—-]\s*", "", short)
-    return short, provides, requires
+    return short, provides, requires, " ".join(footprint)
 
 
 def format_stack(before, after):
@@ -157,7 +162,7 @@ def find_code_stack(lines, idx, name):
 def parse_file(path):
     text = path.read_text()
     lines = text.split("\n")
-    short, provides, requires = parse_header(lines)
+    short, provides, requires, footprint = parse_header(lines)
 
     words = []
     for i, line in enumerate(lines):
@@ -188,7 +193,7 @@ def parse_file(path):
                 continue
             words.append((name, "", KIND_LABEL["CONSTANT"]))
 
-    return short, provides, requires, words
+    return short, provides, requires, footprint, words
 
 
 def slug(filename):
@@ -325,7 +330,7 @@ def render():
     files = sorted(LIB_DIR.glob("*.fs"))
     metrics = load_metrics()
     parsed = [(f, parse_file(f)) for f in files]
-    files_and_words = [(f, parsed_data[3]) for f, parsed_data in parsed]
+    files_and_words = [(f, parsed_data[4]) for f, parsed_data in parsed]
     descriptions, drift, missing = load_descriptions(files_and_words)
 
     if drift:
@@ -377,7 +382,7 @@ def render():
     out.append("---")
     out.append("")
 
-    for f, (short, provides, requires, words) in parsed:
+    for f, (short, provides, requires, footprint, words) in parsed:
         out.append(f"## `{f.name}`")
         out.append("")
         if short:
@@ -388,6 +393,9 @@ def render():
             out.append("")
         if requires:
             out.append(f"**Requires:** {', '.join(requires)}")
+            out.append("")
+        if footprint:
+            out.append(f"**Footprint:** {footprint}")
             out.append("")
         if words:
             # Description list first — what each word does, plus any flow-control notes.

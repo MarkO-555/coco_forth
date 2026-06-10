@@ -7,6 +7,10 @@
 \ Requires: kernel primitives rng + kvar-seed (for snd-noise),
 \           lib/trig.fs init-sin populating trig-base (for snd-sin)
 \
+\ Footprint: ~580 bytes code (synchronous effects). Add ~250 bytes for
+\            lib/trig.fs if you use snd-sin. These effects block the caller;
+\            for non-blocking sound see lib/async-sound.fs.
+\
 \ Plays square-wave tones and white-noise bursts through the 6-bit DAC
 \ at $FF20.  PIA initialization values come from Dungeons of Daggorath's
 \ ONCE.ASM (1982) — storing literal control-register values rather than
