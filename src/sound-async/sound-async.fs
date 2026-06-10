@@ -62,7 +62,7 @@ VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
 $7000 CONSTANT wt-base
 VARIABLE wt-sine
 
-: make-waves  ( -- )  wt-base DUP gen-sine wt-sine ! ;
+: make-waves  ( -- )  wt-base DUP gen-sine-hq wt-sine ! ;
 
 : sq1   ( -- )  SQR 880 0 14  0 1tone ;
 : sq2   ( -- )  SQR 440 0 14  0 1tone ;

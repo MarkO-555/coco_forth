@@ -577,7 +577,7 @@ VDG/SAM display mode switching library
 
 waveform-table generators for the CoCo sound engine
 
-**Provides:** /wave, gen-sine, gen-square, gen-saw, gen-tri
+**Provides:** /wave, gen-sine, gen-sine-hq, gen-square, gen-saw, gen-tri
 
 **Requires:** kernel primitives only (DO/LOOP, *, /MOD, 2*, C!, ...).
 
@@ -586,6 +586,7 @@ waveform-table generators for the CoCo sound engine
 - **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
 - **`gen-tri`** — triangle: ramp up then down.
 - **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency).
+- **`gen-sine-hq`** — a TRUE sine built from the kernel's 91-byte quarter-wave
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
@@ -594,5 +595,6 @@ waveform-table generators for the CoCo sound engine
 | `gen-saw` | `( addr -- )` | colon |  |  |
 | `gen-tri` | `( addr -- )` | colon |  |  |
 | `gen-sine` | `( addr -- )` | colon |  |  |
+| `gen-sine-hq` | `( addr -- )` | colon |  |  |
 
 ---

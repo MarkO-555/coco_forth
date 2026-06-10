@@ -1515,6 +1515,11 @@ CODE fast-plot   ( x y -- )
             <td>Fill a table at <code>addr</code> with a sine (two-lobe parabolic approximation &mdash; no <code>sin</code> dependency).</td>
           </tr>
           <tr>
+            <td class="word-name">gen-sine-hq</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Fill a table at <code>addr</code> with a <em>true</em> sine, built from the kernel&rsquo;s 91-byte quarter-wave (<code>sin-data</code>) by quadrant symmetry &mdash; cleaner than the parabolic <code>gen-sine</code>, reusing the kernel&rsquo;s sine bytes.</td>
+          </tr>
+          <tr>
             <td class="word-name">gen-square</td>
             <td class="stack-effect">( addr -- )</td>
             <td>Fill a table at <code>addr</code> with a square wave.</td>
