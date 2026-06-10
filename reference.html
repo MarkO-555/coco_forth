@@ -1487,6 +1487,51 @@ CODE fast-plot   ( x y -- )
         </table>
       </div>
 
+      <!-- wavetable.fs -->
+      <div class="ref-section">
+        <h3>Waveform Tables</h3>
+        <p class="lib-path">INCLUDE lib/wavetable.fs</p>
+        <p>Generators that fill a 256-byte signed wavetable (-124..+124
+        deviation about the DAC midpoint) at <em>any</em> address. Build a table
+        into free RAM at startup (e.g. <code>$9200</code> in all-RAM mode), then
+        point the sound engine at it with <code>snd-waveform</code> &mdash;
+        keeping ~1&nbsp;KB of tables out of the program binary, which matters for
+        64K apps. Dependency-free (kernel primitives only); independent of the
+        playback engine.</p>
+        <table class="ref-table">
+          <tr>
+            <th style="width:110px">Word</th>
+            <th style="width:180px">Stack</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td class="word-name">/wave</td>
+            <td class="stack-effect">( -- 256 )</td>
+            <td>Constant: bytes per wavetable. Reserve <code>/wave</code> bytes per table.</td>
+          </tr>
+          <tr>
+            <td class="word-name">gen-sine</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Fill a table at <code>addr</code> with a sine (two-lobe parabolic approximation &mdash; no <code>sin</code> dependency).</td>
+          </tr>
+          <tr>
+            <td class="word-name">gen-square</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Fill a table at <code>addr</code> with a square wave.</td>
+          </tr>
+          <tr>
+            <td class="word-name">gen-saw</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Fill a table at <code>addr</code> with a rising sawtooth.</td>
+          </tr>
+          <tr>
+            <td class="word-name">gen-tri</td>
+            <td class="stack-effect">( addr -- )</td>
+            <td>Fill a table at <code>addr</code> with a triangle wave.</td>
+          </tr>
+        </table>
+      </div>
+
       <!-- async-sound.fs -->
       <div class="ref-section">
         <h3>Asynchronous Sound</h3>
@@ -1578,32 +1623,7 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">snd-waveform</td>
             <td class="stack-effect">( addr -- )</td>
-            <td>Point the oscillator at a 256-byte signed wavetable (one filled by a <code>gen-*</code> generator, or any 256-byte table).</td>
-          </tr>
-          <tr>
-            <td class="word-name">gen-sine</td>
-            <td class="stack-effect">( addr -- )</td>
-            <td>Fill a 256-byte signed wavetable at <code>addr</code> with a sine (two-lobe parabolic approximation &mdash; no <code>sin</code> dependency). Tables are generated at runtime into any free RAM (e.g. <code>$9200</code> in all-RAM mode) rather than baked into the binary &mdash; saves ~1&nbsp;KB of program space for 64K apps.</td>
-          </tr>
-          <tr>
-            <td class="word-name">gen-square</td>
-            <td class="stack-effect">( addr -- )</td>
-            <td>Fill a 256-byte table at <code>addr</code> with a square wave.</td>
-          </tr>
-          <tr>
-            <td class="word-name">gen-saw</td>
-            <td class="stack-effect">( addr -- )</td>
-            <td>Fill a 256-byte table at <code>addr</code> with a rising sawtooth.</td>
-          </tr>
-          <tr>
-            <td class="word-name">gen-tri</td>
-            <td class="stack-effect">( addr -- )</td>
-            <td>Fill a 256-byte table at <code>addr</code> with a triangle wave.</td>
-          </tr>
-          <tr>
-            <td class="word-name">/wave</td>
-            <td class="stack-effect">( -- 256 )</td>
-            <td>Constant: bytes per wavetable. Reserve <code>/wave</code> bytes per generated table.</td>
+            <td>Point the oscillator at a 256-byte signed wavetable (filled by a <code>gen-*</code> generator from <code>lib/wavetable.fs</code>, or any 256-byte table).</td>
           </tr>
           <tr>
             <td class="word-name">snd-noise-fill</td>

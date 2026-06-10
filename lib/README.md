@@ -31,6 +31,7 @@ Each file shows a description list (what each word does) followed by a cost tabl
 - [`sprite.fs`](#spritefs)
 - [`trig.fs`](#trigfs)
 - [`vdg.fs`](#vdgfs)
+- [`wavetable.fs`](#wavetablefs)
 
 ---
 
@@ -38,11 +39,10 @@ Each file shows a description list (what each word does) followed by a cost tabl
 
 non-blocking (cooperative) DAC sound for the CoCo
 
-**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-playing?, snd-poll, snd-fill, freq>inc, snd-wave
+**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-slide!, snd-playing?, snd-waveform, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
 
-**Requires:** kernel primitives only (* /mod 2* @ ! c! ...). No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
+**Requires:** kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables come from lib/wavetable.fs (gen-sine etc.) — include it too, generate a table, and snd-waveform it before playing. No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 
-- **`/wave`**
 - **`snd-phase`**
 - **`snd-inc`**
 - **`snd-amp`** — amplitude right-shift around the DAC midpoint (0 = full,
@@ -55,10 +55,6 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin.
 - **`snd-noise-fill`** — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
 - **`freq>inc`**
-- **`gen-square`** — square wave: +124 first half, -124 second.
-- **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
-- **`gen-tri`** — triangle: ramp up then down.
-- **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency).
 - **`snd-async-init`** — one-time setup: init the DAC path and noise (no default waveform).
 - **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable.
 - **`snd-rest`** — hold silence for N frames (a rest between notes).
@@ -72,7 +68,6 @@ non-blocking (cooperative) DAC sound for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `/wave` |  | const |  |  |
 | `snd-phase` |  | var |  |  |
 | `snd-inc` |  | var |  |  |
 | `snd-amp` |  | var |  |  |
@@ -85,10 +80,6 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-fill` | `( n -- )` | CODE |  |  |
 | `snd-noise-fill` | `( n -- )` | CODE |  |  |
 | `freq>inc` | `( freq -- inc )` | colon |  |  |
-| `gen-square` | `( addr -- )` | colon |  |  |
-| `gen-saw` | `( addr -- )` | colon |  |  |
-| `gen-tri` | `( addr -- )` | colon |  |  |
-| `gen-sine` | `( addr -- )` | colon |  |  |
 | `snd-async-init` | `( -- )` | colon |  |  |
 | `snd-waveform` | `( addr -- )` | colon |  |  |
 | `snd-rest` | `( frames -- )` | colon |  |  |
@@ -575,5 +566,29 @@ VDG/SAM display mode switching library
 | `set-sam-f` | `( offset -- )` | colon | 60 | 978 |
 | `set-pia` | `( bits -- )` | colon | 24 | 287 |
 | `reset-text` | `( -- )` | colon | 16 | 2385 |
+
+---
+
+## `wavetable.fs`
+
+waveform-table generators for the CoCo sound engine
+
+**Provides:** /wave, gen-sine, gen-square, gen-saw, gen-tri
+
+**Requires:** kernel primitives only (DO/LOOP, *, /MOD, 2*, C!, ...).
+
+- **`/wave`** — Constant: bytes per wavetable. Reserve /wave bytes per generated table.
+- **`gen-square`** — square wave: +124 first half, -124 second.
+- **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
+- **`gen-tri`** — triangle: ramp up then down.
+- **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency).
+
+| Word | Stack | Kind | Bytes | Cycles |
+|------|-------|------|-------|--------|
+| `/wave` |  | const |  |  |
+| `gen-square` | `( addr -- )` | colon |  |  |
+| `gen-saw` | `( addr -- )` | colon |  |  |
+| `gen-tri` | `( addr -- )` | colon |  |  |
+| `gen-sine` | `( addr -- )` | colon |  |  |
 
 ---

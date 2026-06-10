@@ -1,11 +1,14 @@
 \ async-sound.fs — non-blocking (cooperative) DAC sound for the CoCo
 \
 \ Provides: snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!,
-\           snd-amp!, snd-playing?, snd-poll, snd-fill, freq>inc, snd-wave
+\           snd-amp!, snd-slide!, snd-playing?, snd-waveform, snd-rest,
+\           snd-poll, snd-fill, snd-noise-fill, freq>inc
 \
-\ Requires: kernel primitives only (* /mod 2* @ ! c! ...). No kvar, no trig
-\           table, no kernel patch — snd-poll reads the HSYNC flag at $FF01
-\           and writes the 6-bit DAC at $FF20 directly.
+\ Requires: kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables
+\           come from lib/wavetable.fs (gen-sine etc.) — include it too,
+\           generate a table, and snd-waveform it before playing.
+\           No kvar, no trig table, no kernel patch — snd-poll reads the
+\           HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 \
 \ ── What this is ────────────────────────────────────────────────────────
 \ The synchronous lib/sound.fs blocks the caller for the whole duration of
@@ -44,18 +47,12 @@
 \ drive the voice with sparser snd-poll calls the effective rate — and so
 \ the audible pitch — scales down proportionally; calibrate per use site.
 
-\ ── Wavetables: generated at runtime, not baked into the binary ──────────
+\ ── Wavetables ──────────────────────────────────────────────────────────
 \ A wavetable is 256 signed bytes (-124..+124); snd-poll/snd-fill recenter to
 \ the DAC midpoint ($80) and mask to 6 bits after amplitude, so the table is
-\ amplitude-agnostic and silence sits at mid-rail (no click).
-\
-\ Rather than ship four static DATA tables (~1KB of program space), the
-\ generators below fill a table at ANY caller-given address. A 64K app builds
-\ them in free hi RAM (e.g. $9200 in all-RAM mode); a memory-rich app can hand
-\ them a DATA buffer. Run a generator once at startup, then point snd-waveform
-\ at the address. The generators are defined after the arithmetic helpers
-\ (they use /wave, below).
-256 CONSTANT /wave       \ bytes per wavetable
+\ amplitude-agnostic and silence sits at mid-rail (no click).  The generators
+\ (gen-sine/square/saw/tri, /wave) live in lib/wavetable.fs — generate a table
+\ into free RAM and point snd-waveform at it before playing a voice.
 
 \ ── Voice state (one voice; v2 clones this block and sums in snd-poll) ────
 VARIABLE snd-phase       \ 16-bit phase accumulator; high byte = table index
@@ -208,41 +205,6 @@ CODE snd-noise-fill  \ ( n -- )
 : freq>inc  ( freq -- inc )
   DUP 6 /MOD SWAP DROP    \ ( freq freq/6 )
   SWAP 2* 2* + ;          \ freq/6 + freq*4
-
-\ ── Wavetable generators ( addr -- ) ─────────────────────────────────────
-\ Each fills a 256-byte signed table at addr. Run once into free RAM, then
-\ `addr snd-waveform`. One-time cost, so written in plain Forth.
-
-\ gen-square — square wave: +124 first half, -124 second.
-: gen-square  ( addr -- )
-  /wave 0 DO
-    I 128 < IF 124 ELSE -124 THEN
-    OVER I + C!
-  LOOP DROP ;
-
-\ gen-saw — rising sawtooth ramp (deviation -128..+127).
-: gen-saw  ( addr -- )
-  /wave 0 DO
-    I 128 -
-    OVER I + C!
-  LOOP DROP ;
-
-\ gen-tri — triangle: ramp up then down.
-: gen-tri  ( addr -- )
-  /wave 0 DO
-    I 128 < IF I 2* 128 - ELSE 382 I 2* - THEN
-    OVER I + C!
-  LOOP DROP ;
-
-\ gen-sine — two-lobe parabolic sine approximation (no sin dependency).
-\ Positive lobe peaks +124 at index 64; negative lobe -124 at index 192.
-: gen-sine  ( addr -- )
-  /wave 0 DO
-    I 128 < IF  I  64 - DUP * 33 /MOD SWAP DROP  124 SWAP -
-            ELSE I 192 - DUP * 33 /MOD SWAP DROP  124 -
-            THEN
-    OVER I + C!
-  LOOP DROP ;
 
 \ ── Public API ───────────────────────────────────────────────────────────
 

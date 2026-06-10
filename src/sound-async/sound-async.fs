@@ -8,6 +8,7 @@
 \ (silence between notes) are queued as silent notes via snd-rest semantics.
 
 INCLUDE ../../lib/screen.fs
+INCLUDE ../../lib/wavetable.fs
 INCLUDE ../../lib/async-sound.fs
 INCLUDE ../../lib/bye.fs
 
