@@ -103,10 +103,9 @@ CODE snd-poll  \ ( -- )
         STD     FVAR_snd_phase     ; phase += inc  (A = new high byte = index)
         LDB     FVAR_snd_wave_mode+1
         BNE     @palg           ; non-zero -> algorithmic shape (no table)
-        TFR     A,B             ; table mode: B = index (0..255)
-        CLRA                    ; D = 0..255 (unsigned offset)
-        LDY     FVAR_snd_wave_base
-        LDA     D,Y             ; A = signed wave sample
+        SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
+        LDY     FVAR_snd_wave_base   ; base = table midpoint (table + 128)
+        LDA     A,Y             ; A = signed wave sample (A is a signed offset)
 @pgot   LDB     FVAR_snd_amp+1     ; amplitude = right-shift count (low byte)
         BEQ     @amp0
 @ash    ASRA                    ; arithmetic shift preserves sign
@@ -161,9 +160,8 @@ CODE snd-fill  \ ( n -- )
         STD     FVAR_snd_phase
         LDB     FVAR_snd_wave_mode+1
         BNE     @falg           ; non-zero -> algorithmic shape
-        TFR     A,B             ; table mode: B = index
-        CLRA                    ; D = 0..255
-        LDA     D,X             ; A = signed wave sample (X = wave base)
+        SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
+        LDA     A,X             ; A = signed wave sample (X = table midpoint)
 @fgot   LDB     FVAR_snd_amp+1
         BEQ     @famp0
 @fash   ASRA
@@ -267,7 +265,9 @@ CODE snd-noise-fill  \ ( n -- )
 \ Point the oscillator at a 256-byte signed wavetable (from a gen-* generator,
 \ or any 256-byte table). Takes effect on the next emitted sample.
 \ snd-waveform — point the oscillator at a 256-byte signed wavetable (mode 0).
-: snd-waveform  ( addr -- )  snd-wave-base !  0 snd-wave-mode ! ;
+\ Stores the table midpoint (addr+128) so the emitters can index with a signed
+\ offset (phasehi-128), which is cheaper than a 16-bit unsigned offset.
+: snd-waveform  ( addr -- )  128 + snd-wave-base !  0 snd-wave-mode ! ;
 
 \ Select a table-free algorithmic waveform: 1 = saw, 2 = square, 3 = triangle.
 \ Computed inline from the phase, so no wavetable RAM is needed for these.
