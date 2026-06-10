@@ -42,18 +42,24 @@ non-blocking (cooperative) DAC sound for the CoCo
 
 **Requires:** kernel primitives only (* /mod 2* @ ! c! ...). No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 
+- **`/wave`**
 - **`snd-phase`**
 - **`snd-inc`**
-- **`snd-amp`**
+- **`snd-amp`** — amplitude right-shift around the DAC midpoint (0 = full,
 - **`snd-frames`**
 - **`snd-wave-base`**
 - **`snd-slide`**
 - **`snd-seed`**
+- **`snd-noise-div`** — hold each sample this many HSYNC lines (1 = bright hiss
 - **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
 - **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin.
-- **`snd-noise-fill`** — emit n HSYNC-locked pseudo-random DAC samples (white noise).
+- **`snd-noise-fill`** — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
 - **`freq>inc`**
-- **`snd-async-init`** — one-time setup: init the DAC path and cache the wavetable address.
+- **`gen-square`** — square wave: +124 first half, -124 second.
+- **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
+- **`gen-tri`** — triangle: ramp up then down.
+- **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency).
+- **`snd-async-init`** — one-time setup: init the DAC path and noise (no default waveform).
 - **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable.
 - **`snd-rest`** — hold silence for N frames (a rest between notes).
 - **`snd-note`** — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
@@ -66,6 +72,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
+| `/wave` |  | const |  |  |
 | `snd-phase` |  | var |  |  |
 | `snd-inc` |  | var |  |  |
 | `snd-amp` |  | var |  |  |
@@ -73,10 +80,15 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-wave-base` |  | var |  |  |
 | `snd-slide` |  | var |  |  |
 | `snd-seed` |  | var |  |  |
+| `snd-noise-div` |  | var |  |  |
 | `snd-poll` | `( -- )` | CODE |  |  |
 | `snd-fill` | `( n -- )` | CODE |  |  |
 | `snd-noise-fill` | `( n -- )` | CODE |  |  |
 | `freq>inc` | `( freq -- inc )` | colon |  |  |
+| `gen-square` | `( addr -- )` | colon |  |  |
+| `gen-saw` | `( addr -- )` | colon |  |  |
+| `gen-tri` | `( addr -- )` | colon |  |  |
+| `gen-sine` | `( addr -- )` | colon |  |  |
 | `snd-async-init` | `( -- )` | colon |  |  |
 | `snd-waveform` | `( addr -- )` | colon |  |  |
 | `snd-rest` | `( frames -- )` | colon |  |  |

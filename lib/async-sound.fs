@@ -44,29 +44,18 @@
 \ drive the voice with sparser snd-poll calls the effective rate — and so
 \ the audible pitch — scales down proportionally; calibrate per use site.
 
-\ ── Wavetable: one cycle of a sine, stored as signed deviation ───────────
-\ 256 signed bytes (-124..+124). snd-poll/snd-fill recenter to the DAC
-\ midpoint ($80) and mask to the 6-bit DAC after applying amplitude, so the
-\ table is amplitude-agnostic and silence sits at mid-rail (no click).
-DATA[PY snd-wave
-import math
-bytes((int(124 * math.sin(2 * math.pi * i / 256)) & 0xFF) for i in range(256))
-]DATA
-
-\ Additional 256-byte signed wavetables, same +/-124 convention. Select one
-\ with snd-waveform; snd-poll/snd-fill read whichever is cached in snd-wave-base.
-\ Square: +124 for the first half, -124 for the second.
-DATA[PY snd-square
-bytes(((124 if i < 128 else -124) & 0xFF) for i in range(256))
-]DATA
-\ Sawtooth: single rising ramp -124..+124 (the wrap is the vertical edge).
-DATA[PY snd-saw
-bytes((int(-124 + i * 248 / 255) & 0xFF) for i in range(256))
-]DATA
-\ Triangle: ramp up for the first half, down for the second.
-DATA[PY snd-tri
-bytes(((int(-124 + i * 248 / 127) if i < 128 else int(124 - (i - 128) * 248 / 127)) & 0xFF) for i in range(256))
-]DATA
+\ ── Wavetables: generated at runtime, not baked into the binary ──────────
+\ A wavetable is 256 signed bytes (-124..+124); snd-poll/snd-fill recenter to
+\ the DAC midpoint ($80) and mask to 6 bits after amplitude, so the table is
+\ amplitude-agnostic and silence sits at mid-rail (no click).
+\
+\ Rather than ship four static DATA tables (~1KB of program space), the
+\ generators below fill a table at ANY caller-given address. A 64K app builds
+\ them in free hi RAM (e.g. $9200 in all-RAM mode); a memory-rich app can hand
+\ them a DATA buffer. Run a generator once at startup, then point snd-waveform
+\ at the address. The generators are defined after the arithmetic helpers
+\ (they use /wave, below).
+256 CONSTANT /wave       \ bytes per wavetable
 
 \ ── Voice state (one voice; v2 clones this block and sums in snd-poll) ────
 VARIABLE snd-phase       \ 16-bit phase accumulator; high byte = table index
@@ -220,21 +209,57 @@ CODE snd-noise-fill  \ ( n -- )
   DUP 6 /MOD SWAP DROP    \ ( freq freq/6 )
   SWAP 2* 2* + ;          \ freq/6 + freq*4
 
+\ ── Wavetable generators ( addr -- ) ─────────────────────────────────────
+\ Each fills a 256-byte signed table at addr. Run once into free RAM, then
+\ `addr snd-waveform`. One-time cost, so written in plain Forth.
+
+\ gen-square — square wave: +124 first half, -124 second.
+: gen-square  ( addr -- )
+  /wave 0 DO
+    I 128 < IF 124 ELSE -124 THEN
+    OVER I + C!
+  LOOP DROP ;
+
+\ gen-saw — rising sawtooth ramp (deviation -128..+127).
+: gen-saw  ( addr -- )
+  /wave 0 DO
+    I 128 -
+    OVER I + C!
+  LOOP DROP ;
+
+\ gen-tri — triangle: ramp up then down.
+: gen-tri  ( addr -- )
+  /wave 0 DO
+    I 128 < IF I 2* 128 - ELSE 382 I 2* - THEN
+    OVER I + C!
+  LOOP DROP ;
+
+\ gen-sine — two-lobe parabolic sine approximation (no sin dependency).
+\ Positive lobe peaks +124 at index 64; negative lobe -124 at index 192.
+: gen-sine  ( addr -- )
+  /wave 0 DO
+    I 128 < IF  I  64 - DUP * 33 /MOD SWAP DROP  124 SWAP -
+            ELSE I 192 - DUP * 33 /MOD SWAP DROP  124 -
+            THEN
+    OVER I + C!
+  LOOP DROP ;
+
 \ ── Public API ───────────────────────────────────────────────────────────
 
-\ One-time setup: configure the DAC path and cache the wavetable address.
-\ snd-async-init — one-time setup: init the DAC path and cache the wavetable address.
+\ One-time setup: configure the DAC path and seed noise. Does NOT set a
+\ waveform — generate one (gen-sine etc.) into free RAM and snd-waveform it
+\ before playing a voice.
+\ snd-async-init — one-time setup: init the DAC path and noise (no default waveform).
 : snd-async-init  ( -- )
   _snd-pia
-  snd-wave snd-wave-base !  \ default waveform = sine
   $ACE1 snd-seed !          \ nonzero LFSR seed for noise
   1 snd-noise-div !         \ default noise pitch = bright (1 line/sample)
   0 snd-frames !
   0 snd-amp !
   $80 $FF20 c! ;            \ DAC to midpoint (silence)
 
-\ Select the active wavetable (snd-wave, snd-square, snd-saw, snd-tri, or any
-\ 256-byte signed table). Takes effect on the next emitted sample.
+\ Point the oscillator at a 256-byte signed wavetable (from a gen-* generator,
+\ or any 256-byte table). Takes effect on the next emitted sample.
 \ snd-waveform — point the oscillator at a 256-byte signed wavetable.
 : snd-waveform  ( addr -- )  snd-wave-base ! ;
 
