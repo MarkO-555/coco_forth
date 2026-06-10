@@ -43,7 +43,7 @@ VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
   snd-playing? IF EXIT THEN
   nq-head @ nq-tail @ < 0= IF EXIT THEN
   nq  nq-head @ 10 *  +  nq-slot !
-  nq-slot @     @ snd-waveform
+  nq-slot @ @  DUP 4 < IF snd-shape ELSE snd-waveform THEN  \ <4 = algorithmic mode
   nq-slot @ 2 + @  nq-slot @ 4 + @  nq-slot @ 6 + @  snd-note
   nq-slot @ 8 + @ snd-slide!
   nq-head @ 1 + nq-head ! ;
@@ -52,39 +52,37 @@ VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
 \ single-note effect: ( wave freq amp frames slide -- )
 : 1tone  ( wave freq amp frames slide -- )  seq0 nq-add ;
 
-\ ── Wavetable bank, generated at runtime into free hi RAM ────────────────
-\ Built once by make-waves; the tables are NOT in the program binary. A 64K
-\ app would point wt-base at $9200 (free all-RAM heap); here we use a fixed
-\ free address in the ROM-mode heap to mirror that.
+\ Algorithmic-waveform modes (snd-shape) -- computed inline, no table RAM.
+1 CONSTANT SAW   2 CONSTANT SQR   3 CONSTANT TRI
+
+\ ── Wavetable bank ───────────────────────────────────────────────────────
+\ Only the sine needs a real table now; saw/square/triangle are computed
+\ inline by the engine.  Built once into free hi RAM at startup (a 64K app
+\ would use $9200) -- 256 bytes instead of the 1KB four-table bank.
 $7000 CONSTANT wt-base
-VARIABLE wt-sine    VARIABLE wt-square
-VARIABLE wt-saw     VARIABLE wt-tri
+VARIABLE wt-sine
 
-: make-waves  ( -- )
-  wt-base             DUP gen-sine   wt-sine !
-  wt-base /wave +     DUP gen-square wt-square !
-  wt-base /wave 2* +  DUP gen-saw    wt-saw !
-  wt-base /wave 3 * + DUP gen-tri    wt-tri ! ;
+: make-waves  ( -- )  wt-base DUP gen-sine wt-sine ! ;
 
-: sq1   ( -- )  wt-square @ 880 0 14  0 1tone ;
-: sq2   ( -- )  wt-square @ 440 0 14  0 1tone ;
-: sq3   ( -- )  wt-square @ 220 0 14  0 1tone ;
-: sq4   ( -- )  wt-square @ 110 0 14  0 1tone ;
-: swp   ( -- )  wt-sine @  1500 0 12 -600 1tone ;    \ descending sweep
-: saw1  ( -- )  wt-saw @    220 0 16  0 1tone ;
-: saw2  ( -- )  wt-saw @    440 0 16  0 1tone ;
-: tri8  ( -- )  wt-tri @    330 0 16  0 1tone ;
-: sin9  ( -- )  wt-sine @   440 0 18  0 1tone ;
-: beep  ( -- )  wt-square @ 700 0  5  0 1tone ;      \ short blip
-: zap   ( -- )  wt-saw @   2800 0  6 -1700 1tone ;   \ maser: high saw, fast fall
-: hit   ( -- )  wt-square @ 400 0  5 -300 1tone ;
-: rise  ( -- )  wt-sine @   300 0 14  500 1tone ;
+: sq1   ( -- )  SQR 880 0 14  0 1tone ;
+: sq2   ( -- )  SQR 440 0 14  0 1tone ;
+: sq3   ( -- )  SQR 220 0 14  0 1tone ;
+: sq4   ( -- )  SQR 110 0 14  0 1tone ;
+: swp   ( -- )  wt-sine @ 1500 0 12 -600 1tone ;     \ descending sweep (sine)
+: saw1  ( -- )  SAW 220 0 16  0 1tone ;
+: saw2  ( -- )  SAW 440 0 16  0 1tone ;
+: tri8  ( -- )  TRI 330 0 16  0 1tone ;
+: sin9  ( -- )  wt-sine @ 440 0 18  0 1tone ;
+: beep  ( -- )  SQR 700 0  5  0 1tone ;              \ short blip
+: zap   ( -- )  SAW 2800 0  6 -1700 1tone ;          \ maser: high saw, fast fall
+: hit   ( -- )  SQR 400 0  5 -300 1tone ;
+: rise  ( -- )  wt-sine @ 300 0 14  500 1tone ;
 
 \ Two-tone dock chime.
 : dock  ( -- )
   seq0
-  wt-square @ 600 0 10 0 nq-add
-  wt-square @ 300 0 12 0 nq-add ;
+  SQR 600 0 10 0 nq-add
+  SQR 300 0 12 0 nq-add ;
 
 \ Three sine blips with silent rests between (rest = freq 0, amp 8).
 : chirp  ( -- )

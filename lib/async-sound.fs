@@ -59,7 +59,8 @@ VARIABLE snd-phase       \ 16-bit phase accumulator; high byte = table index
 VARIABLE snd-inc         \ phase increment per emitted sample (sets pitch)
 VARIABLE snd-amp         \ amplitude as an arithmetic right-shift (0 = full)
 VARIABLE snd-frames      \ remaining frames; 0 = idle (voice silent)
-VARIABLE snd-wave-base   \ cached address of snd-wave for the CODE emitters
+VARIABLE snd-wave-base   \ cached address of the wavetable for the CODE emitters
+VARIABLE snd-wave-mode   \ 0 = wavetable; 1 = saw, 2 = square, 3 = triangle (no table)
 VARIABLE snd-slide       \ signed per-frame phase-increment delta (pitch slide; 0 = steady)
 VARIABLE snd-seed        \ 16-bit LFSR state for snd-noise-fill (nonzero)
 VARIABLE snd-noise-div   \ HSYNC lines each noise sample is held (>=1; higher = lower pitch)
@@ -100,11 +101,13 @@ CODE snd-poll  \ ( -- )
         LDD     FVAR_snd_phase
         ADDD    FVAR_snd_inc
         STD     FVAR_snd_phase     ; phase += inc  (A = new high byte = index)
-        TFR     A,B             ; B = table index
+        LDB     FVAR_snd_wave_mode+1
+        BNE     @palg           ; non-zero -> algorithmic shape (no table)
+        TFR     A,B             ; table mode: B = index (0..255)
         CLRA                    ; D = 0..255 (unsigned offset)
         LDY     FVAR_snd_wave_base
         LDA     D,Y             ; A = signed wave sample
-        LDB     FVAR_snd_amp+1     ; amplitude = right-shift count (low byte)
+@pgot   LDB     FVAR_snd_amp+1     ; amplitude = right-shift count (low byte)
         BEQ     @amp0
 @ash    ASRA                    ; arithmetic shift preserves sign
         DECB
@@ -114,6 +117,25 @@ CODE snd-poll  \ ( -- )
         STA     $FF20
 @done
         ;NEXT
+        ; ── algorithmic shapes: derive signed sample in A from phase hi ──
+@palg   DECB                    ; B held mode 1..3
+        BEQ     @psaw           ; 1 = saw
+        DECB
+        BEQ     @psqr           ; 2 = square
+        TSTA                    ; 3 = triangle: fold the phase hi
+        BPL     @ptri
+        COMA                    ; A = 255 - phasehi (mirror the down-ramp)
+@ptri   ASLA                    ; *2
+        SUBA    #$80            ; -> signed deviation
+        BRA     @pgot
+@psaw   SUBA    #$80            ; saw: deviation = phasehi - 128
+        BRA     @pgot
+@psqr   TSTA                    ; square: sign of phase hi
+        BMI     @psqn
+        LDA     #124
+        BRA     @pgot
+@psqn   LDA     #-124
+        BRA     @pgot
 ;CODE
 
 \ ── snd-fill ( n -- )  blocking, n HSYNC-locked samples ──────────────────
@@ -137,10 +159,12 @@ CODE snd-fill  \ ( n -- )
         LDD     FVAR_snd_phase
         ADDD    FVAR_snd_inc
         STD     FVAR_snd_phase
-        TFR     A,B             ; B = table index
+        LDB     FVAR_snd_wave_mode+1
+        BNE     @falg           ; non-zero -> algorithmic shape
+        TFR     A,B             ; table mode: B = index
         CLRA                    ; D = 0..255
-        LDA     D,X             ; A = signed wave sample
-        LDB     FVAR_snd_amp+1
+        LDA     D,X             ; A = signed wave sample (X = wave base)
+@fgot   LDB     FVAR_snd_amp+1
         BEQ     @famp0
 @fash   ASRA
         DECB
@@ -152,6 +176,25 @@ CODE snd-fill  \ ( n -- )
         BNE     @floop
 @fdone  PULS    X
         ;NEXT
+        ; ── algorithmic shapes: derive signed sample in A from phase hi ──
+@falg   DECB                    ; B held mode 1..3
+        BEQ     @fsaw           ; 1 = saw
+        DECB
+        BEQ     @fsqr           ; 2 = square
+        TSTA                    ; 3 = triangle
+        BPL     @ftri
+        COMA
+@ftri   ASLA
+        SUBA    #$80
+        BRA     @fgot
+@fsaw   SUBA    #$80
+        BRA     @fgot
+@fsqr   TSTA
+        BMI     @fsqn
+        LDA     #124
+        BRA     @fgot
+@fsqn   LDA     #-124
+        BRA     @fgot
 ;CODE
 
 \ ── snd-noise-fill ( n -- )  blocking, n noise samples ────────────────────
@@ -216,14 +259,20 @@ CODE snd-noise-fill  \ ( n -- )
   _snd-pia
   $ACE1 snd-seed !          \ nonzero LFSR seed for noise
   1 snd-noise-div !         \ default noise pitch = bright (1 line/sample)
+  0 snd-wave-mode !         \ default to wavetable mode
   0 snd-frames !
   0 snd-amp !
   $80 $FF20 c! ;            \ DAC to midpoint (silence)
 
 \ Point the oscillator at a 256-byte signed wavetable (from a gen-* generator,
 \ or any 256-byte table). Takes effect on the next emitted sample.
-\ snd-waveform — point the oscillator at a 256-byte signed wavetable.
-: snd-waveform  ( addr -- )  snd-wave-base ! ;
+\ snd-waveform — point the oscillator at a 256-byte signed wavetable (mode 0).
+: snd-waveform  ( addr -- )  snd-wave-base !  0 snd-wave-mode ! ;
+
+\ Select a table-free algorithmic waveform: 1 = saw, 2 = square, 3 = triangle.
+\ Computed inline from the phase, so no wavetable RAM is needed for these.
+\ snd-shape — select an algorithmic (table-free) waveform: 1 saw, 2 square, 3 triangle.
+: snd-shape  ( mode -- )  snd-wave-mode ! ;
 
 \ Hold silence for `frames` frames while keeping the voice "playing" (so the
 \ main loop keeps emitting + aging). The async analog of the old snd-pause:

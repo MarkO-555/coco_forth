@@ -1623,7 +1623,12 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">snd-waveform</td>
             <td class="stack-effect">( addr -- )</td>
-            <td>Point the oscillator at a 256-byte signed wavetable (filled by a <code>gen-*</code> generator from <code>lib/wavetable.fs</code>, or any 256-byte table).</td>
+            <td>Point the oscillator at a 256-byte signed wavetable (filled by a <code>gen-*</code> generator from <code>lib/wavetable.fs</code>, or any 256-byte table). Selects table mode.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-shape</td>
+            <td class="stack-effect">( mode -- )</td>
+            <td>Select a table-free algorithmic waveform computed inline from the phase: 1 = saw, 2 = square, 3 = triangle. No wavetable RAM needed for these (saves 256 bytes each vs a generated table).</td>
           </tr>
           <tr>
             <td class="word-name">snd-noise-fill</td>

@@ -48,6 +48,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-amp`** — amplitude right-shift around the DAC midpoint (0 = full,
 - **`snd-frames`**
 - **`snd-wave-base`**
+- **`snd-wave-mode`**
 - **`snd-slide`**
 - **`snd-seed`**
 - **`snd-noise-div`** — hold each sample this many HSYNC lines (1 = bright hiss
@@ -56,7 +57,8 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-noise-fill`** — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
 - **`freq>inc`**
 - **`snd-async-init`** — one-time setup: init the DAC path and noise (no default waveform).
-- **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable.
+- **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable (mode 0).
+- **`snd-shape`** — select an algorithmic (table-free) waveform: 1 saw, 2 square, 3 triangle.
 - **`snd-rest`** — hold silence for N frames (a rest between notes).
 - **`snd-note`** — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
 - **`snd-stop`** — silence the voice now and hold the DAC at midpoint.
@@ -73,6 +75,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-amp` |  | var |  |  |
 | `snd-frames` |  | var |  |  |
 | `snd-wave-base` |  | var |  |  |
+| `snd-wave-mode` |  | var |  |  |
 | `snd-slide` |  | var |  |  |
 | `snd-seed` |  | var |  |  |
 | `snd-noise-div` |  | var |  |  |
@@ -82,6 +85,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `freq>inc` | `( freq -- inc )` | colon |  |  |
 | `snd-async-init` | `( -- )` | colon |  |  |
 | `snd-waveform` | `( addr -- )` | colon |  |  |
+| `snd-shape` | `( mode -- )` | colon |  |  |
 | `snd-rest` | `( frames -- )` | colon |  |  |
 | `snd-note` | `( freq amp frames -- )` | colon |  |  |
 | `snd-stop` | `( -- )` | colon |  |  |
