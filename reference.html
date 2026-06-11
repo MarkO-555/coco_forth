@@ -1544,7 +1544,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Asynchronous Sound</h3>
         <p class="lib-path">INCLUDE lib/async-sound.fs</p>
-        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars). With <code>lib/wavetable.fs</code> the full async engine is ~970 bytes code, plus 256 bytes per runtime wavetable (or zero with algorithmic modes).</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With <code>lib/wavetable.fs</code> the full async engine is ~1040 bytes code, plus 256 bytes per runtime wavetable (or zero with algorithmic modes).</p>
         <p>A <em>non-blocking</em> companion to <code>lib/sound.fs</code>. Where
         <code>snd-tone</code> &amp; friends stop the caller for the whole length
         of a note, this engine never blocks: a voice is a phase-accumulator
@@ -1582,7 +1582,7 @@ CODE fast-plot   ( x y -- )
           <tr>
             <td class="word-name">snd-note</td>
             <td class="stack-effect">( freq amp frames -- )</td>
-            <td>Start a voice and return immediately. <code>freq</code> = pitch in Hz, <code>amp</code> = amplitude as an arithmetic right-shift (0 = full, 1 = half&hellip;), <code>frames</code> = duration in VSYNC frames.</td>
+            <td>Start a voice and return immediately. <code>freq</code> = pitch in Hz, <code>amp</code> = attenuation 0&ndash;255 (0 = full volume, 255 = silent), <code>frames</code> = duration in VSYNC frames.</td>
           </tr>
           <tr>
             <td class="word-name">snd-stop</td>
@@ -1611,13 +1611,18 @@ CODE fast-plot   ( x y -- )
           </tr>
           <tr>
             <td class="word-name">snd-amp!</td>
-            <td class="stack-effect">( amp -- )</td>
-            <td>Change the running voice&rsquo;s amplitude (right-shift) without restarting it &mdash; for fades/accents.</td>
+            <td class="stack-effect">( att -- )</td>
+            <td>Set the running voice&rsquo;s attenuation 0&ndash;255 (0 = full, 255 = silent) without restarting it. Smooth (multiply-based) &mdash; for fades/accents.</td>
           </tr>
           <tr>
             <td class="word-name">snd-slide!</td>
             <td class="stack-effect">( delta -- )</td>
             <td>Set a signed per-frame pitch slide that <code>snd-frame</code> applies automatically (negative = falling). A maser/zap is <code>snd-note</code> + a negative <code>snd-slide!</code>; the scheduler does nothing else per frame.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-env!</td>
+            <td class="stack-effect">( delta -- )</td>
+            <td>Set a signed per-frame attenuation delta &mdash; the amplitude envelope &mdash; that <code>snd-frame</code> applies automatically (clamped 0&ndash;255). Positive fades out (decay), negative swells. The amplitude analogue of <code>snd-slide!</code>.</td>
           </tr>
           <tr>
             <td class="word-name">snd-playing?</td>

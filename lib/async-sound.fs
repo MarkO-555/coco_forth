@@ -1,8 +1,8 @@
 \ async-sound.fs — non-blocking (cooperative) DAC sound for the CoCo
 \
 \ Provides: snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!,
-\           snd-amp!, snd-slide!, snd-playing?, snd-waveform, snd-rest,
-\           snd-poll, snd-fill, snd-noise-fill, freq>inc
+\           snd-amp!, snd-slide!, snd-env!, snd-playing?, snd-waveform,
+\           snd-shape, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
 \
 \ Requires: kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables
 \           come from lib/wavetable.fs (gen-sine etc.) — include it too,
@@ -10,8 +10,8 @@
 \           No kvar, no trig table, no kernel patch — snd-poll reads the
 \           HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 \
-\ Footprint: ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars).
-\            With lib/wavetable.fs the full async engine is ~970 bytes code,
+\ Footprint: ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars).
+\            With lib/wavetable.fs the full async engine is ~1040 bytes code,
 \            plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
 \
 \ ── What this is ────────────────────────────────────────────────────────
@@ -61,11 +61,12 @@
 \ ── Voice state (one voice; v2 clones this block and sums in snd-poll) ────
 VARIABLE snd-phase       \ 16-bit phase accumulator; high byte = table index
 VARIABLE snd-inc         \ phase increment per emitted sample (sets pitch)
-VARIABLE snd-amp         \ amplitude as an arithmetic right-shift (0 = full)
+VARIABLE snd-amp         \ attenuation 0..255 (0 = full volume, 255 = silent)
 VARIABLE snd-frames      \ remaining frames; 0 = idle (voice silent)
 VARIABLE snd-wave-base   \ cached address of the wavetable for the CODE emitters
 VARIABLE snd-wave-mode   \ 0 = wavetable; 1 = saw, 2 = square, 3 = triangle (no table)
 VARIABLE snd-slide       \ signed per-frame phase-increment delta (pitch slide; 0 = steady)
+VARIABLE snd-env         \ signed per-frame attenuation delta (amp envelope; + fades out)
 VARIABLE snd-seed        \ 16-bit LFSR state for snd-noise-fill (nonzero)
 VARIABLE snd-noise-div   \ HSYNC lines each noise sample is held (>=1; higher = lower pitch)
 
@@ -110,11 +111,16 @@ CODE snd-poll  \ ( -- )
         SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
         LDY     FVAR_snd_wave_base   ; base = table midpoint (table + 128)
         LDA     A,Y             ; A = signed wave sample (A is a signed offset)
-@pgot   LDB     FVAR_snd_amp+1     ; amplitude = right-shift count (low byte)
-        BEQ     @amp0
-@ash    ASRA                    ; arithmetic shift preserves sign
-        DECB
-        BNE     @ash
+@pgot   LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
+        BEQ     @amp0           ; full volume -> skip the multiply (fast path)
+        COMB                    ; B = 255 - att = gain
+        TSTA                    ; signed-magnitude multiply: |sample| * gain >> 8
+        BMI     @aneg
+        MUL                     ; D = sample * gain ; A = product high byte
+        BRA     @amp0
+@aneg   NEGA
+        MUL
+        NEGA                    ; re-apply the sign
 @amp0   ADDA    #$80            ; recenter to DAC midpoint
         ANDA    #$FC            ; mask to the 6-bit DAC (bits 7-2)
         STA     $FF20
@@ -166,11 +172,16 @@ CODE snd-fill  \ ( n -- )
         BNE     @falg           ; non-zero -> algorithmic shape
         SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
         LDA     A,X             ; A = signed wave sample (X = table midpoint)
-@fgot   LDB     FVAR_snd_amp+1
+@fgot   LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
         BEQ     @famp0
-@fash   ASRA
-        DECB
-        BNE     @fash
+        COMB                    ; gain = 255 - att
+        TSTA
+        BMI     @faneg
+        MUL
+        BRA     @famp0
+@faneg  NEGA
+        MUL
+        NEGA
 @famp0  ADDA    #$80
         ANDA    #$FC
         STA     $FF20
@@ -204,8 +215,8 @@ CODE snd-fill  \ ( n -- )
 \ galois LFSR (tap $B400) instead of the wavetable. Two knobs shape it:
 \   snd-noise-div  — hold each sample this many HSYNC lines (1 = bright hiss
 \                    at 15.7kHz; higher = lower-pitched rumble)
-\   snd-amp        — amplitude right-shift around the DAC midpoint (0 = full,
-\                    higher = quieter); ramp it up across calls for a decay
+\   snd-amp        — attenuation 0..255 (0 = full, 255 = silent); ramp it up
+\                    across calls for a smooth decay
 \ Total duration = n * snd-noise-div scan lines. Independent of voice state.
 \ snd-noise-fill — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
 CODE snd-noise-fill  \ ( n -- )
@@ -222,11 +233,16 @@ CODE snd-noise-fill  \ ( n -- )
         EORA    #$B4            ; tap $B400 (high byte)
 @nofb   STD     FVAR_snd_seed
         SUBA    #$80            ; high byte -> signed deviation about midpoint
-        LDB     FVAR_snd_amp+1  ; amplitude right-shift (decay)
+        LDB     FVAR_snd_amp+1  ; B = attenuation (0 = full)
         BEQ     @namp0
-@nash   ASRA
-        DECB
-        BNE     @nash
+        COMB                    ; gain = 255 - att
+        TSTA
+        BMI     @naneg
+        MUL
+        BRA     @namp0
+@naneg  NEGA
+        MUL
+        NEGA
 @namp0  ADDA    #$80            ; recenter
         ANDA    #$FC            ; A = held DAC value for this sample
         LDX     FVAR_snd_noise_div  ; hold it for div HSYNC lines (>=1)
@@ -263,7 +279,8 @@ CODE snd-noise-fill  \ ( n -- )
   1 snd-noise-div !         \ default noise pitch = bright (1 line/sample)
   0 snd-wave-mode !         \ default to wavetable mode
   0 snd-frames !
-  0 snd-amp !
+  0 snd-amp !               \ full volume (0 attenuation)
+  0 snd-env !
   $80 $FF20 c! ;            \ DAC to midpoint (silence)
 
 \ Point the oscillator at a 256-byte signed wavetable (from a gen-* generator,
@@ -280,26 +297,28 @@ CODE snd-noise-fill  \ ( n -- )
 
 \ Hold silence for `frames` frames while keeping the voice "playing" (so the
 \ main loop keeps emitting + aging). The async analog of the old snd-pause:
-\ inc 0 freezes the phase and amp 8 collapses the sample to the DAC midpoint.
+\ inc 0 freezes the phase and full attenuation (255) mutes the output.
 \ snd-rest — hold silence for N frames (a rest between notes).
 : snd-rest  ( frames -- )
   snd-frames !
   0 snd-inc !
   0 snd-slide !
-  8 snd-amp ! ;
+  0 snd-env !
+  255 snd-amp ! ;
 
 \ Start a voice. Returns immediately; the sound is produced by subsequent
 \ snd-poll / snd-fill calls and aged by snd-frame.
 \   freq   pitch in Hz (assuming full snd-fill sample rate)
-\   amp    amplitude as a right-shift: 0 = full, 1 = half, ...
+\   amp    attenuation: 0 = full volume, 255 = silent
 \   frames how many frames (VSYNC ticks) the note lasts
-\ snd-note — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
+\ snd-note — start a voice (freq Hz, amp attenuation, frames duration); returns immediately.
 : snd-note  ( freq amp frames -- )
   snd-frames !
   snd-amp !
   freq>inc snd-inc !
   0 snd-phase !
-  0 snd-slide ! ;         \ steady pitch unless snd-slide! is set after
+  0 snd-slide !           \ steady pitch unless snd-slide! is set after
+  0 snd-env ! ;           \ steady level unless snd-env! is set after
 
 \ Silence the voice now.
 \ snd-stop — silence the voice now and hold the DAC at midpoint.
@@ -312,16 +331,19 @@ CODE snd-noise-fill  \ ( n -- )
 : snd-frame  ( -- )
   snd-frames @ 0= IF EXIT THEN
   snd-frames @ 1 - snd-frames !
-  snd-inc @ snd-slide @ + snd-inc !    \ apply per-frame pitch slide
+  snd-inc @ snd-slide @ + snd-inc !            \ pitch slide
+  snd-amp @ snd-env @ + 0MAX 255 MIN snd-amp ! \ amplitude envelope (clamped 0..255)
   snd-frames @ 0= IF snd-stop THEN ;
 
-\ Live control (no restart): retune / change volume / set a pitch slide.
+\ Live control (no restart): retune / change volume / set pitch or amp ramps.
 \ snd-pitch! — retune the running voice without restarting it.
 : snd-pitch!  ( freq -- )  freq>inc snd-inc ! ;
-\ snd-amp! — change the running voice amplitude (right-shift) without restarting.
-: snd-amp!    ( amp -- )   snd-amp ! ;
+\ snd-amp! — change the running voice attenuation (0 = full, 255 = silent).
+: snd-amp!    ( att -- )   snd-amp ! ;
 \ snd-slide! — set a signed per-frame pitch slide (negative = falling, e.g. a zap).
 : snd-slide!  ( delta -- )  snd-slide ! ;
+\ snd-env! — set a signed per-frame amplitude envelope: +delta fades out, -delta swells.
+: snd-env!    ( delta -- )  snd-env ! ;
 
 \ Is a voice currently playing?  ( -- flag )
 \ snd-playing? — true if a voice is currently active.

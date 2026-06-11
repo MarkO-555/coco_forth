@@ -20,7 +20,7 @@ VARIABLE noise-n         \ noise samples emitted per chunk
 
 \ ── Note queue: up to 6 steps, each 5 cells (wave freq amp frames slide) ──
 DATA[PY nq
-bytes(60)
+bytes(72)
 ]DATA
 VARIABLE nq-head
 VARIABLE nq-tail
@@ -29,8 +29,9 @@ VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
 : nq-reset  ( -- )  0 nq-head !  0 nq-tail ! ;
 : seq0      ( -- )  snd-stop  nq-reset ;     \ interrupt current sound, start fresh
 
-: nq-add  ( wave freq amp frames slide -- )
-  nq  nq-tail @ 10 *  +  nq-slot !
+: nq-add  ( wave freq amp frames slide env -- )
+  nq  nq-tail @ 12 *  +  nq-slot !
+  nq-slot @ 10 + !       \ env
   nq-slot @ 8 + !        \ slide
   nq-slot @ 6 + !        \ frames
   nq-slot @ 4 + !        \ amp
@@ -42,15 +43,16 @@ VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
 : nq-play  ( -- )
   snd-playing? IF EXIT THEN
   nq-head @ nq-tail @ < 0= IF EXIT THEN
-  nq  nq-head @ 10 *  +  nq-slot !
+  nq  nq-head @ 12 *  +  nq-slot !
   nq-slot @ @  DUP 4 < IF snd-shape ELSE snd-waveform THEN  \ <4 = algorithmic mode
   nq-slot @ 2 + @  nq-slot @ 4 + @  nq-slot @ 6 + @  snd-note
   nq-slot @ 8 + @ snd-slide!
+  nq-slot @ 10 + @ snd-env!
   nq-head @ 1 + nq-head ! ;
 
 \ ── Effects ───────────────────────────────────────────────────────────────
-\ single-note effect: ( wave freq amp frames slide -- )
-: 1tone  ( wave freq amp frames slide -- )  seq0 nq-add ;
+\ single-note effect: ( wave freq amp frames slide env -- )
+: 1tone  ( wave freq amp frames slide env -- )  seq0 nq-add ;
 
 \ Algorithmic-waveform modes (snd-shape) -- computed inline, no table RAM.
 1 CONSTANT SAW   2 CONSTANT SQR   3 CONSTANT TRI
@@ -64,34 +66,35 @@ VARIABLE wt-sine
 
 : make-waves  ( -- )  wt-base DUP gen-sine-hq wt-sine ! ;
 
-: sq1   ( -- )  SQR 880 0 14  0 1tone ;
-: sq2   ( -- )  SQR 440 0 14  0 1tone ;
-: sq3   ( -- )  SQR 220 0 14  0 1tone ;
-: sq4   ( -- )  SQR 110 0 14  0 1tone ;
-: swp   ( -- )  wt-sine @ 1500 0 12 -600 1tone ;     \ descending sweep (sine)
-: saw1  ( -- )  SAW 220 0 16  0 1tone ;
-: saw2  ( -- )  SAW 440 0 16  0 1tone ;
-: tri8  ( -- )  TRI 330 0 16  0 1tone ;
-: sin9  ( -- )  wt-sine @ 440 0 18  0 1tone ;
-: beep  ( -- )  SQR 700 0  5  0 1tone ;              \ short blip
-: zap   ( -- )  SAW 2800 0  6 -1700 1tone ;          \ maser: high saw, fast fall
-: hit   ( -- )  SQR 400 0  5 -300 1tone ;
-: rise  ( -- )  wt-sine @ 300 0 14  500 1tone ;
+\ ( wave freq amp frames slide env )  env = per-frame attenuation rise (fade-out)
+: sq1   ( -- )  SQR 880 0 14  0   0 1tone ;
+: sq2   ( -- )  SQR 440 0 14  0   0 1tone ;
+: sq3   ( -- )  SQR 220 0 14  0   0 1tone ;
+: sq4   ( -- )  SQR 110 0 14  0   0 1tone ;
+: swp   ( -- )  wt-sine @ 1500 0 12 -600 0 1tone ;     \ descending sweep (sine)
+: saw1  ( -- )  SAW 220 0 16  0   0 1tone ;
+: saw2  ( -- )  SAW 440 0 16  0   0 1tone ;
+: tri8  ( -- )  TRI 330 0 16  0   0 1tone ;
+: sin9  ( -- )  wt-sine @ 440 0 18  0  16 1tone ;      \ sine that fades out (envelope)
+: beep  ( -- )  SQR 700 0  5  0   0 1tone ;            \ short blip
+: zap   ( -- )  SAW 2800 0  6 -1700 42 1tone ;         \ maser: falls AND fades (envelope)
+: hit   ( -- )  SQR 400 0  5 -300 50 1tone ;           \ short, quick fade
+: rise  ( -- )  wt-sine @ 300 0 14  500 0 1tone ;
 
 \ Two-tone dock chime.
 : dock  ( -- )
   seq0
-  SQR 600 0 10 0 nq-add
-  SQR 300 0 12 0 nq-add ;
+  SQR 600 0 10 0 0 nq-add
+  SQR 300 0 12 0 0 nq-add ;
 
-\ Three sine blips with silent rests between (rest = freq 0, amp 8).
+\ Three sine blips with silent rests between (rest = freq 0, amp 255 = silent).
 : chirp  ( -- )
   seq0
-  wt-sine @ 1400 0 2 0 nq-add
-  wt-sine @    0 8 2 0 nq-add
-  wt-sine @ 1400 0 2 0 nq-add
-  wt-sine @    0 8 2 0 nq-add
-  wt-sine @ 1400 0 2 0 nq-add ;
+  wt-sine @ 1400   0 2 0 0 nq-add
+  wt-sine @    0 255 2 0 0 nq-add
+  wt-sine @ 1400   0 2 0 0 nq-add
+  wt-sine @    0 255 2 0 0 nq-add
+  wt-sine @ 1400   0 2 0 0 nq-add ;
 
 \ Noise / boom: chunked noise so the marker keeps moving.
 \ noise = bright hiss, steady level.  boom = low rumble that decays away.
@@ -147,8 +150,8 @@ VARIABLE wt-sine
     marker
     key? dispatch
     noise-fr @ 0 > IF
-      noise-len @ 0 > IF                       \ amplitude decay (boom)
-        noise-len @ noise-fr @ -  3 rshift  snd-amp !
+      noise-len @ 0 > IF                       \ smooth amplitude decay (boom)
+        noise-len @ noise-fr @ -  DUP 2* 2* +  255 MIN  snd-amp !
       THEN
       noise-n @ snd-noise-fill
       noise-fr @ 1 - noise-fr !

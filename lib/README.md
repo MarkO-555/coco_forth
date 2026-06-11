@@ -39,19 +39,20 @@ Each file shows a description list (what each word does) followed by a cost tabl
 
 non-blocking (cooperative) DAC sound for the CoCo
 
-**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-slide!, snd-playing?, snd-waveform, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
+**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-slide!, snd-env!, snd-playing?, snd-waveform, snd-shape, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
 
 **Requires:** kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables come from lib/wavetable.fs (gen-sine etc.) — include it too, generate a table, and snd-waveform it before playing. No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 
-**Footprint:** ~615 bytes code (12 Forth words + 4 CODE words + 9 voice vars). With lib/wavetable.fs the full async engine is ~970 bytes code, plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
+**Footprint:** ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With lib/wavetable.fs the full async engine is ~1040 bytes code, plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
 
 - **`snd-phase`**
 - **`snd-inc`**
-- **`snd-amp`** — amplitude right-shift around the DAC midpoint (0 = full,
+- **`snd-amp`** — attenuation 0..255 (0 = full, 255 = silent); ramp it up
 - **`snd-frames`**
 - **`snd-wave-base`**
 - **`snd-wave-mode`**
 - **`snd-slide`**
+- **`snd-env`**
 - **`snd-seed`**
 - **`snd-noise-div`** — hold each sample this many HSYNC lines (1 = bright hiss
 - **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
@@ -62,12 +63,13 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable (mode 0).
 - **`snd-shape`** — select an algorithmic (table-free) waveform: 1 saw, 2 square, 3 triangle.
 - **`snd-rest`** — hold silence for N frames (a rest between notes).
-- **`snd-note`** — start a voice (freq Hz, amp right-shift, frames duration); returns immediately.
+- **`snd-note`** — start a voice (freq Hz, amp attenuation, frames duration); returns immediately.
 - **`snd-stop`** — silence the voice now and hold the DAC at midpoint.
 - **`snd-frame`** — per-VSYNC housekeeping: age the note one frame, auto-stop at zero.
 - **`snd-pitch!`** — retune the running voice without restarting it.
-- **`snd-amp!`** — change the running voice amplitude (right-shift) without restarting.
+- **`snd-amp!`** — change the running voice attenuation (0 = full, 255 = silent).
 - **`snd-slide!`** — set a signed per-frame pitch slide (negative = falling, e.g. a zap).
+- **`snd-env!`** — set a signed per-frame amplitude envelope: +delta fades out, -delta swells.
 - **`snd-playing?`** — true if a voice is currently active.
 
 | Word | Stack | Kind | Bytes | Cycles |
@@ -79,6 +81,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-wave-base` |  | var |  |  |
 | `snd-wave-mode` |  | var |  |  |
 | `snd-slide` |  | var |  |  |
+| `snd-env` |  | var |  |  |
 | `snd-seed` |  | var |  |  |
 | `snd-noise-div` |  | var |  |  |
 | `snd-poll` | `( -- )` | CODE |  |  |
@@ -93,8 +96,9 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-stop` | `( -- )` | colon |  |  |
 | `snd-frame` | `( -- )` | colon |  |  |
 | `snd-pitch!` | `( freq -- )` | colon |  |  |
-| `snd-amp!` | `( amp -- )` | colon |  |  |
+| `snd-amp!` | `( att -- )` | colon |  |  |
 | `snd-slide!` | `( delta -- )` | colon |  |  |
+| `snd-env!` | `( delta -- )` | colon |  |  |
 | `snd-playing?` | `( -- f )` | colon |  |  |
 
 ---
