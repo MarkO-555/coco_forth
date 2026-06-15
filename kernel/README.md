@@ -35,6 +35,11 @@ LDY ,X++    ; fetch next CFA address from thread, advance IP by 2
 JMP [,Y]    ; jump through CFA to machine code
 ```
 
+> **Interactive walkthrough:** [`itc-threading.html`](itc-threading.html) single-steps
+> through `LIT 5  DOUBLE  HALT` (where `: DOUBLE DUP + ;`) — the double indirection,
+> both stacks, and `NEXT` / `LIT` / `DOCOL` / `EXIT` / `HALT`, with an animated IP and
+> live stacks. Open it in a browser.
+
 ### Register assignments
 
 | Register | Role |

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bare Naked Forth — ITC Threading, Step by Step</title>
+<style>
+  body { background:#15151f; color:#d8d8e0; font-family:'Menlo','Consolas',monospace;
+         margin:0; padding:18px 22px; }
+  h1 { color:#00ff88; font-size:19px; margin:0 0 4px; }
+  h2 { color:#888; font-size:13px; font-weight:normal; margin:0 0 14px; }
+  .wrap { max-width:1060px; }
+  .intro { font-size:13px; line-height:1.6; color:#b8b8c4; margin-bottom:12px; }
+  .intro code, .narr code, .legend code { background:#2a2a40; color:#ffcc66; padding:1px 5px; border-radius:3px; }
+  svg { display:block; }
+  .controls { margin:12px 0; }
+  button { background:#2a2a4e; color:#e0e0e0; border:1px solid #4488cc; border-radius:5px;
+           font-family:inherit; font-size:13px; padding:8px 16px; cursor:pointer; margin-right:8px; }
+  button:hover { background:#34345e; }
+  button:disabled { opacity:0.4; cursor:default; }
+  button.primary { background:#00ff88; color:#15151f; border-color:#00ff88; font-weight:bold; }
+  .stepno { color:#888; font-size:12px; margin-left:8px; }
+  .panel { background:#1d1d2c; border:1px solid #2e2e44; border-radius:6px; padding:12px 16px; margin-top:10px; }
+  .asm { color:#ffcc44; font-size:15px; min-height:20px; }
+  .narr { font-size:14px; line-height:1.6; margin-top:6px; min-height:44px; }
+  .look { font-size:13px; line-height:1.5; margin-top:8px; padding-top:8px;
+          border-top:1px solid #2e2e44; color:#7fd1e6; min-height:20px; }
+  .look b { color:#aef0ff; }
+  .legend { font-size:12px; color:#999; margin-top:10px; line-height:1.8; }
+  .legend code { font-size:11px; }
+  .reg { color:#66ccee; }
+  .verified { font-size:11px; color:#667; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Indirect Threaded Code, one micro-step at a time</h1>
+<h2>How Bare Naked Forth actually runs a word — the double indirection, the two stacks, LIT / NEXT / DOCOL / EXIT / HALT</h2>
+
+<p class="intro">
+A Forth word is <strong>not</strong> a subroutine you <code>JSR</code> to. A <em>colon</em> word is a
+<strong>thread</strong>: a list of <strong>CFAs</strong> (code-field addresses); a <em>primitive</em> is
+machine code fronted by a CFA. The inner interpreter walks the thread with <code>NEXT</code>, and each
+entry is reached by a <em>double indirection</em>: thread cell &rarr; CFA &rarr; machine code. Registers:
+<span class="reg">X = IP</span>,
+<span class="reg">U = data stack</span>,
+<span class="reg">S = return stack</span>,
+<span class="reg">Y = W</span> (scratch, holds the CFA in hand).
+Below we run <code>MAIN = LIT 5&nbsp;&nbsp;DOUBLE&nbsp;&nbsp;HALT</code> where <code>: DOUBLE  DUP +  ;</code>
+&mdash; push <code>5</code>, double it to <code>10</code>, then halt. Press <strong>Step</strong>.
+</p>
+
+<svg id="svg" width="1040" height="490"></svg>
+
+<div class="controls">
+  <button id="reset">&#8634; Reset</button>
+  <button id="back">&#8592; Back</button>
+  <button id="step" class="primary">Step &#8594;</button>
+  <button id="run">&#9654; Run</button>
+  <span class="stepno" id="stepno"></span>
+</div>
+
+<div class="panel">
+  <div class="asm" id="asm"></div>
+  <div class="narr" id="narr"></div>
+  <div class="look" id="look"></div>
+</div>
+
+<div class="legend">
+  <strong>NEXT</strong> = <code>LDY ,X++</code> (fetch CFA into W, bump IP) then <code>JMP [,Y]</code> (jump through the CFA). Every primitive ends with it.<br>
+  <strong>LIT</strong> = <code>LDD ,X++</code> (read the inline literal, step IP past it) / <code>STD ,--U</code> / NEXT &mdash; this is how constants ride <em>inside</em> the thread.<br>
+  <strong>DOCOL</strong> (a colon word&rsquo;s code) = <code>PSHS X</code> (save caller IP) / <code>LEAX 2,Y</code> (IP &rarr; body) / NEXT.
+  <strong>EXIT</strong> = <code>PULS X</code> (restore caller IP) / NEXT.
+  <strong>HALT</strong> = <code>BRA HALT</code> &mdash; branches to itself forever; the one primitive that does <em>not</em> do NEXT.<br>
+  Amber = inline data (not a CFA); yellow = cell just read; green = where IP points; pink arrow = the <code>JMP [,Y]</code> indirection.
+  <div class="verified">Verified against kernel/kernel.asm: NEXT 84-85, LIT 450-454, DOCOL 224-228, DUP 575-579, + 535-541, EXIT 442-445, HALT 1673-1674.</div>
+</div>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent || svg).appendChild(e);
+  return e;
+}
+function txt(x, y, s, attrs, parent) {
+  const t = el('text', Object.assign({x, y}, attrs || {}), parent);
+  t.textContent = s;
+  return t;
+}
+
+const cellEls = {}, codeEls = {};
+const CW = 168, CH = 30;
+
+// kind: 'cfa' (default) | 'data' (inline literal, amber) | 'faint'
+function styleFor(kind) {
+  if (kind==='faint') return {fill:'#191926', stroke:'#33334a', text:'#555'};
+  if (kind==='data')  return {fill:'#2a2418', stroke:'#c89a3a', text:'#ffcf80'};
+  return {fill:'#23233a', stroke:'#44557a', text:'#cfe'};
+}
+function cell(id, x, y, label, kind) {
+  kind = kind || 'cfa';
+  const s = styleFor(kind), g = el('g', {});
+  const r = el('rect', {x, y, width:CW, height:CH, rx:4, fill:s.fill, stroke:s.stroke,
+    'stroke-width':1.5, id:'r_'+id}, g);
+  txt(x+10, y+20, label, {fill:s.text, 'font-size':'13px'}, g);
+  cellEls[id] = {x, y, rect:r, kind};
+}
+function codebox(id, x, y, label, sub) {
+  const g = el('g', {});
+  const r = el('rect', {x, y, width:184, height:34, rx:4, fill:'#20202e',
+    stroke:'#3a3a54', 'stroke-width':1.5, id:'c_'+id}, g);
+  txt(x+10, y+15, label, {fill:'#ffd', 'font-size':'13px', 'font-weight':'bold'}, g);
+  txt(x+10, y+29, sub, {fill:'#889', 'font-size':'10px'}, g);
+  codeEls[id] = {x, y, rect:r};
+}
+
+// Column headers
+txt(40, 64, 'MAIN thread', {fill:'#888','font-size':'12px'});
+txt(300, 64, ': DOUBLE  DUP +  ;', {fill:'#888','font-size':'12px'});
+txt(620, 64, 'machine code', {fill:'#888','font-size':'12px'});
+
+// MAIN thread cells (LIT 5  DOUBLE  HALT)
+cell('mlit',  40, 74,  '&LIT');
+cell('mlitv', 40, 108, '5', 'data');
+cell('m0',    40, 142, '&DOUBLE');
+cell('m1',    40, 176, '&HALT');
+cell('m2',    40, 210, '...', 'faint');
+
+// DOUBLE: CFA + body
+cell('dcfa', 300, 74,  'CFA  ->  DOCOL');
+cell('d0',   300, 116, '&DUP');
+cell('d1',   300, 150, '&+');
+cell('d2',   300, 184, '&EXIT');
+cell('d3',   300, 218, '...', 'faint');
+
+// Code boxes
+codebox('DOCOL', 620, 70,  'DOCOL', 'PSHS X / LEAX 2,Y / NEXT');
+codebox('LIT',   620, 108, 'LIT',   'LDD ,X++ / STD ,--U / NEXT');
+codebox('DUP',   620, 146, 'DUP',   'LDD ,U / STD ,--U / NEXT');
+codebox('PLUS',  620, 184, '+',     'LDD ,U / LEAU 2,U / ADDD ,U / STD ,U');
+codebox('EXIT',  620, 222, 'EXIT',  'PULS X / NEXT');
+codebox('HALT',  620, 260, 'HALT',  'BRA HALT  (spins forever)');
+
+// IP pointer
+const ipPtr = el('path', {d:'M0,0 L14,7 L0,14 Z', fill:'#00ff88', opacity:0});
+
+// W register chip
+el('rect', {x:300, y:24, width:168, height:26, rx:4, fill:'#1d2a32', stroke:'#66ccee', 'stroke-width':1.5});
+txt(310, 41, 'W (Y):', {fill:'#66ccee','font-size':'12px'});
+const wVal = txt(372, 41, '', {fill:'#bfe9ff','font-size':'13px','font-weight':'bold'});
+txt(40, 41, 'IP = X', {fill:'#00ff88','font-size':'12px'});
+
+// Indirect-jump arrow (W -> code box)
+const jarrow = el('path', {fill:'none', stroke:'#ff6688', 'stroke-width':2.5,
+  'marker-end':'url(#ah)', opacity:0});
+const defs = el('defs', {});
+const m = el('marker', {id:'ah', markerWidth:8, markerHeight:8, refX:6, refY:3, orient:'auto'}, defs);
+el('path', {d:'M0,0 L6,3 L0,6 Z', fill:'#ff6688'}, m);
+
+// Stacks
+txt(40, 326, 'Data stack (U)', {fill:'#888','font-size':'12px'});
+txt(300, 326, 'Return stack (S)', {fill:'#888','font-size':'12px'});
+const dsGroup = el('g', {});
+const rsGroup = el('g', {});
+function drawStack(group, arr, x, color) {
+  while (group.firstChild) group.removeChild(group.firstChild);
+  const baseY = 470, h = 26;
+  arr.forEach((v, i) => {
+    const y = baseY - (i+1)*h;
+    el('rect', {x, y, width:200, height:h-3, rx:3, fill:'#23233a', stroke:color, 'stroke-width':1.5}, group);
+    txt(x+10, y+17, v, {fill:'#cfe','font-size':'12px'}, group);
+  });
+  if (arr.length) txt(x+210, baseY-(arr.length)*h+17, '< TOS', {fill:color,'font-size':'10px'}, group);
+  else txt(x+10, baseY-15, '(empty)', {fill:'#556','font-size':'11px'}, group);
+}
+
+// ── Steps ─────────────────────────────────────────────────────────────────
+const RET = 'MAIN: &HALT';
+const S = [
+ {ip:'mlit', w:'', exec:null, jump:false, ds:[], rs:[], hi:[], asm:'',
+  narr:'Ready. MAIN is the thread <code>LIT 5&nbsp;&nbsp;DOUBLE&nbsp;&nbsp;HALT</code>. The data stack is empty &mdash; the <code>5</code> isn&rsquo;t there yet; <code>LIT</code> is about to put it there.',
+  look:'the green IP arrow on <code>&LIT</code>. The amber cell below it is <b>not</b> a CFA &mdash; it&rsquo;s the raw value <code>5</code> sitting inline in the thread.'},
+
+ {ip:'mlitv', w:'&LIT', exec:null, jump:false, ds:[], rs:[], hi:['mlit'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b>: fetch the CFA at IP (<code>&LIT</code>) into <span class="reg">W</span>; advance IP &mdash; which now points at the inline literal cell.',
+  look:'W = <code>&LIT</code>, and the IP arrow has stepped onto the amber <code>5</code>. IP is sitting on <em>data</em> right now, not a CFA &mdash; LIT is about to use that.'},
+
+ {ip:'mlitv', w:'&LIT', exec:'LIT', jump:true, ds:[], rs:[], hi:[], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code> through <code>&LIT</code> lands in <code>CODE_LIT</code>.',
+  look:'the pink arrow from W to the <code>LIT</code> box.'},
+
+ {ip:'m0', w:'&LIT', exec:'LIT', jump:false, ds:['5'], rs:[], hi:['mlitv'], asm:'LIT:  LDD ,X++  /  STD ,--U',
+  narr:'<b>LIT</b> reads the inline value IP points at (<code>5</code>) with <code>LDD ,X++</code> &mdash; that bumps IP <em>past</em> it &mdash; then pushes it. This is how constants ride inline in the thread.',
+  look:'two things at once: <code>5</code> appears on the data stack, and the IP arrow jumps <em>over</em> the consumed amber cell to land on <code>&DOUBLE</code>.'},
+
+ {ip:'m1', w:'&DOUBLE', exec:null, jump:false, ds:['5'], rs:[], hi:['m0'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b> (LIT ends with it): fetch <code>&DOUBLE</code> into W, advance IP to <code>&HALT</code>.',
+  look:'W = <code>&DOUBLE</code>; the IP arrow advanced to MAIN&rsquo;s <code>&HALT</code> cell.'},
+
+ {ip:'m1', w:'&DOUBLE', exec:'DOCOL', jump:true, ds:['5'], rs:[], hi:['dcfa'], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code> jumps <em>indirectly</em> through the CFA. <code>[&DOUBLE]</code> = <code>DOCOL</code> &mdash; the shared entry code for every colon word. The double indirection: <b>cell &rarr; CFA &rarr; code</b>.',
+  look:'the pink arrow from W to <code>DOCOL</code>, passing through the yellow DOUBLE CFA cell &mdash; W held the CFA, <code>[,Y]</code> followed it to the code.'},
+
+ {ip:'m1', w:'&DOUBLE', exec:'DOCOL', jump:false, ds:['5'], rs:[RET], hi:[], asm:'DOCOL: PSHS X',
+  narr:'<b>DOCOL</b>: push the caller&rsquo;s IP (now pointing at MAIN&rsquo;s next cell, <code>&HALT</code>) onto the <span class="reg">return stack</span>, so we can resume MAIN after DOUBLE finishes.',
+  look:'a new entry on the return stack (right): the address of MAIN&rsquo;s <code>&HALT</code> cell &mdash; the bookmark home.'},
+
+ {ip:'d0', w:'&DOUBLE', exec:'DOCOL', jump:false, ds:['5'], rs:[RET], hi:['dcfa'], asm:'DOCOL: LEAX 2,Y',
+  narr:'<b>DOCOL</b>: set IP to DOUBLE&rsquo;s <b>body</b> &mdash; the cell right after its CFA, <code>&DUP</code>. Then fall into NEXT.',
+  look:'the green IP arrow jump across into DOUBLE&rsquo;s body, landing on <code>&DUP</code>. We&rsquo;re now executing inside DOUBLE.'},
+
+ {ip:'d1', w:'&DUP', exec:null, jump:false, ds:['5'], rs:[RET], hi:['d0'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b>: fetch <code>&DUP</code> into W, advance IP to <code>&+</code>.',
+  look:'W = <code>&DUP</code>; the IP arrow advanced one cell to <code>&+</code>. Same NEXT, just inside DOUBLE now.'},
+
+ {ip:'d1', w:'&DUP', exec:'DUP', jump:true, ds:['5'], rs:[RET], hi:[], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code>. <code>DUP</code> is a <em>primitive</em>, so its CFA points straight at machine code &mdash; no DOCOL.',
+  look:'the pink arrow points at the <code>DUP</code> box &mdash; one indirection straight to machine code.'},
+
+ {ip:'d1', w:'&DUP', exec:'DUP', jump:false, ds:['5','5'], rs:[RET], hi:[], asm:'DUP:  LDD ,U  /  STD ,--U',
+  narr:'<b>DUP</b> runs: copy the top of the data stack. <code>5</code> &rarr; <code>5 5</code>.',
+  look:'the data stack grow &mdash; a second <code>5</code> appears on top.'},
+
+ {ip:'d2', w:'&+', exec:null, jump:false, ds:['5','5'], rs:[RET], hi:['d1'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b> (DUP ends with it): fetch <code>&+</code>, advance IP to <code>&EXIT</code>.',
+  look:'W = <code>&+</code>; IP moved to <code>&EXIT</code>. Every primitive ends by falling into NEXT, so the thread keeps marching.'},
+
+ {ip:'d2', w:'&+', exec:'PLUS', jump:true, ds:['5','5'], rs:[RET], hi:[], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code> &mdash; run <code>+</code> (primitive).',
+  look:'the pink arrow swing to the <code>+</code> box.'},
+
+ {ip:'d2', w:'&+', exec:'PLUS', jump:false, ds:['10'], rs:[RET], hi:[], asm:'+ :  LDD ,U / LEAU 2,U / ADDD ,U / STD ,U',
+  narr:'<b>+</b> runs: read TOS, pop it, add it to the new TOS, write the sum back. <code>5 5</code> &rarr; <code>10</code>.',
+  look:'the data stack collapse from two cells to one: <code>10</code>.'},
+
+ {ip:'d3', w:'&EXIT', exec:null, jump:false, ds:['10'], rs:[RET], hi:['d2'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b>: fetch <code>&EXIT</code>, advance IP past the body. (That next cell is never read &mdash; EXIT is about to redirect IP.)',
+  look:'W = <code>&EXIT</code>; the IP arrow slid past the body onto the faint &ldquo;...&rdquo; cell. About to be overwritten.'},
+
+ {ip:'d3', w:'&EXIT', exec:'EXIT', jump:true, ds:['10'], rs:[RET], hi:[], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code> &mdash; run <code>EXIT</code>, the colon word&rsquo;s &ldquo;return&rdquo;.',
+  look:'the pink arrow to the <code>EXIT</code> box.'},
+
+ {ip:'m1', w:'&EXIT', exec:'EXIT', jump:false, ds:['10'], rs:[], hi:[], asm:'EXIT: PULS X',
+  narr:'<b>EXIT</b>: pop the saved IP off the <span class="reg">return stack</span> back into IP. We&rsquo;re back in MAIN, pointing at <code>&HALT</code>. DOUBLE has returned <code>10</code>.',
+  look:'two things at once: the return stack empties, and the green IP arrow snaps all the way back to MAIN&rsquo;s <code>&HALT</code> cell.'},
+
+ {ip:'m2', w:'&HALT', exec:null, jump:false, ds:['10'], rs:[], hi:['m1'], asm:'NEXT:  LDY ,X++',
+  narr:'<b>NEXT</b>: fetch <code>&HALT</code> into W, advance IP. Same NEXT loop we started in &mdash; the threading hasn&rsquo;t stopped.',
+  look:'W = <code>&HALT</code>; IP stepped past MAIN.'},
+
+ {ip:'m2', w:'&HALT', exec:'HALT', jump:true, ds:['10'], rs:[], hi:[], asm:'NEXT:  JMP [,Y]',
+  narr:'<b>NEXT</b>: <code>JMP [,Y]</code> &mdash; jump into <code>HALT</code>.',
+  look:'the pink arrow to the <code>HALT</code> box.'},
+
+ {ip:'m2', w:'&HALT', exec:'HALT', jump:false, ds:['10'], rs:[], hi:[], asm:'HALT: BRA HALT',
+  narr:'<b>HALT</b> runs <code>BRA HALT</code> &mdash; it branches to <em>itself</em>, forever. It is the one primitive that does <b>not</b> end in NEXT, so the threading chain stops here. (It does not return to BASIC &mdash; that&rsquo;s <code>exit-basic</code>; HALT just parks the CPU.)',
+  look:'the <code>HALT</code> box stays lit and nothing advances &mdash; the IP is frozen on itself. The final answer, <code>10</code>, rests on the data stack.'},
+];
+
+let cur = 0;
+
+function render(i) {
+  const s = S[i];
+  for (const id in cellEls) {
+    const c = cellEls[id], st = styleFor(c.kind);
+    c.rect.setAttribute('fill', st.fill);
+    c.rect.setAttribute('stroke', st.stroke);
+    c.rect.setAttribute('stroke-width', 1.5);
+  }
+  for (const id in codeEls) {
+    codeEls[id].rect.setAttribute('fill', '#20202e');
+    codeEls[id].rect.setAttribute('stroke', '#3a3a54');
+    codeEls[id].rect.setAttribute('stroke-width', 1.5);
+  }
+  s.hi.forEach(id => { if (cellEls[id]) {
+    cellEls[id].rect.setAttribute('stroke', '#ffcc44');
+    cellEls[id].rect.setAttribute('stroke-width', 2.5);
+  }});
+  if (s.ip && cellEls[s.ip]) {
+    const c = cellEls[s.ip];
+    c.rect.setAttribute('stroke', '#00ff88');
+    c.rect.setAttribute('stroke-width', 2.5);
+    ipPtr.setAttribute('opacity', 1);
+    ipPtr.setAttribute('transform', `translate(${c.x-20},${c.y+CH/2-7})`);
+  } else ipPtr.setAttribute('opacity', 0);
+  if (s.exec && codeEls[s.exec]) {
+    const b = codeEls[s.exec];
+    b.rect.setAttribute('fill', '#143024');
+    b.rect.setAttribute('stroke', '#00ff88');
+    b.rect.setAttribute('stroke-width', 2.5);
+  }
+  if (s.jump && s.exec && codeEls[s.exec]) {
+    const b = codeEls[s.exec];
+    const x1 = 468, y1 = 37, x2 = b.x - 2, y2 = b.y + 17;
+    const mx = (x1+x2)/2 + 30;
+    jarrow.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    jarrow.setAttribute('opacity', 1);
+  } else jarrow.setAttribute('opacity', 0);
+  wVal.textContent = s.w || '(none)';
+  drawStack(dsGroup, s.ds, 40, '#00ff88');
+  drawStack(rsGroup, s.rs, 300, '#cc88ee');
+  document.getElementById('asm').textContent = s.asm;
+  document.getElementById('narr').innerHTML = s.narr;
+  document.getElementById('look').innerHTML = s.look ? '<b>&#128064; Watch</b> &mdash; ' + s.look : '';
+  document.getElementById('stepno').textContent = `step ${i} / ${S.length-1}`;
+  document.getElementById('back').disabled = (i===0);
+  document.getElementById('step').disabled = (i===S.length-1);
+  document.getElementById('run').disabled = (i===S.length-1);
+}
+
+let runTimer = null;
+function stopRun() { if (runTimer) { clearInterval(runTimer); runTimer = null;
+  document.getElementById('run').textContent = '▶ Run'; } }
+
+document.getElementById('step').onclick = () => { if (cur<S.length-1) render(++cur); };
+document.getElementById('back').onclick = () => { stopRun(); if (cur>0) render(--cur); };
+document.getElementById('reset').onclick = () => { stopRun(); cur=0; render(0); };
+document.getElementById('run').onclick = () => {
+  if (runTimer) { stopRun(); return; }
+  document.getElementById('run').textContent = '⏸ Pause';
+  runTimer = setInterval(() => {
+    if (cur<S.length-1) render(++cur); else stopRun();
+  }, 1100);
+};
+
+render(0);
+</script>
+</body>
+</html>
