@@ -1,8 +1,9 @@
 \ async-sound.fs — non-blocking (cooperative) DAC sound for the CoCo
 \
 \ Provides: snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!,
-\           snd-amp!, snd-slide!, snd-env!, snd-playing?, snd-waveform,
-\           snd-shape, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
+\           snd-amp!, snd-slide!, snd-env!, snd-ringmod!, snd-playing?,
+\           snd-waveform, snd-shape, snd-rest, snd-poll, snd-fill,
+\           snd-noise-fill, freq>inc
 \
 \ Requires: kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables
 \           come from lib/wavetable.fs (gen-sine etc.) — include it too,
@@ -10,8 +11,8 @@
 \           No kvar, no trig table, no kernel patch — snd-poll reads the
 \           HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 \
-\ Footprint: ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars).
-\            With lib/wavetable.fs the full async engine is ~1040 bytes code,
+\ Footprint: ~765 bytes code (Forth words + 4 CODE emitters + 10 voice vars).
+\            With lib/wavetable.fs the full async engine is ~1125 bytes code,
 \            plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
 \
 \ ── What this is ────────────────────────────────────────────────────────
@@ -67,6 +68,9 @@ VARIABLE snd-wave-base   \ cached address of the wavetable for the CODE emitters
 VARIABLE snd-wave-mode   \ 0 = wavetable; 1 = saw, 2 = square, 3 = triangle (no table)
 VARIABLE snd-slide       \ signed per-frame phase-increment delta (pitch slide; 0 = steady)
 VARIABLE snd-env         \ signed per-frame attenuation delta (amp envelope; + fades out)
+VARIABLE snd-rm-period   \ ring-mod square half-period in samples (0 = off)
+VARIABLE snd-rm-count    \ ring-mod down-counter (per emitted sample)
+VARIABLE snd-rm-sign     \ ring-mod current polarity ($00 = pass, $FF = invert)
 VARIABLE snd-seed        \ 16-bit LFSR state for snd-noise-fill (nonzero)
 VARIABLE snd-noise-div   \ HSYNC lines each noise sample is held (>=1; higher = lower pitch)
 
@@ -111,7 +115,16 @@ CODE snd-poll  \ ( -- )
         SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
         LDY     FVAR_snd_wave_base   ; base = table midpoint (table + 128)
         LDA     A,Y             ; A = signed wave sample (A is a signed offset)
-@pgot   LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
+@pgot   LDB     FVAR_snd_rm_period+1   ; ring mod (square): 0 = off
+        BEQ     @rmoff
+        DEC     FVAR_snd_rm_count+1    ; advance the half-cycle counter
+        BNE     @rmtst
+        STB     FVAR_snd_rm_count+1    ; count hit 0 -> reload (B = period)
+        COM     FVAR_snd_rm_sign+1     ; and flip polarity ($00<->$FF)
+@rmtst  TST     FVAR_snd_rm_sign+1
+        BEQ     @rmoff
+        NEGA                           ; modulator low -> invert the carrier
+@rmoff  LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
         BEQ     @amp0           ; full volume -> skip the multiply (fast path)
         COMB                    ; B = 255 - att = gain
         TSTA                    ; signed-magnitude multiply: |sample| * gain >> 8
@@ -172,7 +185,16 @@ CODE snd-fill  \ ( n -- )
         BNE     @falg           ; non-zero -> algorithmic shape
         SUBA    #$80            ; table mode: A = signed offset (phasehi - 128)
         LDA     A,X             ; A = signed wave sample (X = table midpoint)
-@fgot   LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
+@fgot   LDB     FVAR_snd_rm_period+1   ; ring mod (square): 0 = off
+        BEQ     @frmoff
+        DEC     FVAR_snd_rm_count+1
+        BNE     @frmtst
+        STB     FVAR_snd_rm_count+1    ; reload (B = period)
+        COM     FVAR_snd_rm_sign+1     ; flip polarity
+@frmtst TST     FVAR_snd_rm_sign+1
+        BEQ     @frmoff
+        NEGA                           ; modulator low -> invert
+@frmoff LDB     FVAR_snd_amp+1     ; B = attenuation (0 = full)
         BEQ     @famp0
         COMB                    ; gain = 255 - att
         TSTA
@@ -281,6 +303,7 @@ CODE snd-noise-fill  \ ( n -- )
   0 snd-frames !
   0 snd-amp !               \ full volume (0 attenuation)
   0 snd-env !
+  0 snd-rm-period !         \ ring mod off
   $80 $FF20 c! ;            \ DAC to midpoint (silence)
 
 \ Point the oscillator at a 256-byte signed wavetable (from a gen-* generator,
@@ -344,6 +367,12 @@ CODE snd-noise-fill  \ ( n -- )
 : snd-slide!  ( delta -- )  snd-slide ! ;
 \ snd-env! — set a signed per-frame amplitude envelope: +delta fades out, -delta swells.
 : snd-env!    ( delta -- )  snd-env ! ;
+\ Enable square-wave ring modulation: period = samples per half cycle (modulator
+\ freq ~ 7867/period Hz); 0 turns it off. The square just flips the carrier's
+\ sign, so it costs no multiply. A persistent timbre setting (like snd-shape):
+\ snd-note does not clear it; carrier slide and amp env both apply on top.
+\ snd-ringmod! — enable square ring mod (period samples, ~7867/period Hz; 0 = off).
+: snd-ringmod!  ( period -- )  DUP snd-rm-period !  snd-rm-count !  0 snd-rm-sign ! ;
 
 \ Is a voice currently playing?  ( -- flag )
 \ snd-playing? — true if a voice is currently active.

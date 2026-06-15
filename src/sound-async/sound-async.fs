@@ -27,7 +27,7 @@ VARIABLE nq-tail
 VARIABLE nq-slot         \ scratch slot address (avoids return-stack juggling)
 
 : nq-reset  ( -- )  0 nq-head !  0 nq-tail ! ;
-: seq0      ( -- )  snd-stop  nq-reset ;     \ interrupt current sound, start fresh
+: seq0      ( -- )  snd-stop  nq-reset  0 snd-ringmod! ;   \ start fresh (ring mod off)
 
 : nq-add  ( wave freq amp frames slide env -- )
   nq  nq-tail @ 12 *  +  nq-slot !
@@ -81,6 +81,14 @@ VARIABLE wt-sine
 : hit   ( -- )  SQR 400 0  5 -300 50 1tone ;           \ short, quick fade
 : rise  ( -- )  wt-sine @ 300 0 14  500 0 1tone ;
 
+\ ── Ring modulation (square modulator) examples ──────────────────────────
+\ Carrier = the oscillator (pitch/slide/amp-env all apply); modulator = a
+\ fixed square set by snd-ringmod! (period samples, ~7867/period Hz). 1tone's
+\ seq0 clears ring mod first, so we set it after.
+: ring  ( -- )  wt-sine @ 440 0 30   0 0 1tone   16 snd-ringmod! ;  \ steady metallic tone
+: gong  ( -- )  wt-sine @ 330 0 40   0 6 1tone   24 snd-ringmod! ;  \ ring mod + amp decay = bell
+: warp  ( -- )  wt-sine @ 1200 0 24 -140 0 1tone 10 snd-ringmod! ;  \ slide sweeps the sidebands
+
 \ Two-tone dock chime.
 : dock  ( -- )
   seq0
@@ -109,7 +117,8 @@ VARIABLE wt-sine
   ." 6 7 SAW  8 TRI  9 SINE" CR
   ." 0 NOISE" CR
   ." B BEEP  Z ZAP  X BOOM" CR
-  ." C CHIRP  D DOCK  H HIT" CR CR
+  ." C CHIRP  D DOCK  H HIT" CR
+  ." R RING  G GONG  W WARP" CR CR
   ." BREAK   QUIT" CR ;
 
 : marker  ( -- )
@@ -134,9 +143,12 @@ VARIABLE wt-sine
   DUP CHAR C = IF DROP chirp ELSE
   DUP CHAR D = IF DROP dock  ELSE
   DUP CHAR H = IF DROP hit   ELSE
+  DUP CHAR R = IF DROP ring  ELSE
+  DUP CHAR G = IF DROP gong  ELSE
+  DUP CHAR W = IF DROP warp  ELSE
   DUP 3     = IF DROP 0 running ! ELSE
   DROP
-  THEN THEN THEN THEN THEN THEN THEN THEN THEN
+  THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN
   THEN THEN THEN THEN THEN THEN THEN THEN ;
 
 : main  ( -- )

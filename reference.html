@@ -1544,7 +1544,7 @@ CODE fast-plot   ( x y -- )
       <div class="ref-section">
         <h3>Asynchronous Sound</h3>
         <p class="lib-path">INCLUDE lib/async-sound.fs</p>
-        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With <code>lib/wavetable.fs</code> the full async engine is ~1040 bytes code, plus 256 bytes per runtime wavetable (or zero with algorithmic modes).</p>
+        <p style="font-size:13px;color:#666"><strong>Footprint:</strong> ~765 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With <code>lib/wavetable.fs</code> the full async engine is ~1125 bytes code, plus 256 bytes per runtime wavetable (or zero with algorithmic modes).</p>
         <p>A <em>non-blocking</em> companion to <code>lib/sound.fs</code>. Where
         <code>snd-tone</code> &amp; friends stop the caller for the whole length
         of a note, this engine never blocks: a voice is a phase-accumulator
@@ -1623,6 +1623,11 @@ CODE fast-plot   ( x y -- )
             <td class="word-name">snd-env!</td>
             <td class="stack-effect">( delta -- )</td>
             <td>Set a signed per-frame attenuation delta &mdash; the amplitude envelope &mdash; that <code>snd-frame</code> applies automatically (clamped 0&ndash;255). Positive fades out (decay), negative swells. The amplitude analogue of <code>snd-slide!</code>.</td>
+          </tr>
+          <tr>
+            <td class="word-name">snd-ringmod!</td>
+            <td class="stack-effect">( period -- )</td>
+            <td>Enable square-wave ring modulation: <code>period</code> = samples per half cycle (modulator freq &asymp; 7867/period Hz), 0 = off. The square flips the carrier&rsquo;s sign, so it costs no multiply. A persistent timbre setting (like <code>snd-shape</code>) &mdash; <code>snd-note</code> does not clear it; carrier slide and amp env apply on top. Slide sweeps the sidebands.</td>
           </tr>
           <tr>
             <td class="word-name">snd-playing?</td>

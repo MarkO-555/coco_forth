@@ -39,11 +39,11 @@ Each file shows a description list (what each word does) followed by a cost tabl
 
 non-blocking (cooperative) DAC sound for the CoCo
 
-**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-slide!, snd-env!, snd-playing?, snd-waveform, snd-shape, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
+**Provides:** snd-async-init, snd-note, snd-stop, snd-frame, snd-pitch!, snd-amp!, snd-slide!, snd-env!, snd-ringmod!, snd-playing?, snd-waveform, snd-shape, snd-rest, snd-poll, snd-fill, snd-noise-fill, freq>inc
 
 **Requires:** kernel primitives only (* /mod 2* @ ! c! ...). Waveform tables come from lib/wavetable.fs (gen-sine etc.) — include it too, generate a table, and snd-waveform it before playing. No kvar, no trig table, no kernel patch — snd-poll reads the HSYNC flag at $FF01 and writes the 6-bit DAC at $FF20 directly.
 
-**Footprint:** ~685 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With lib/wavetable.fs the full async engine is ~1040 bytes code, plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
+**Footprint:** ~765 bytes code (Forth words + 4 CODE emitters + 10 voice vars). With lib/wavetable.fs the full async engine is ~1125 bytes code, plus 256 bytes per runtime wavetable (or 0 with algorithmic modes).
 
 - **`snd-phase`**
 - **`snd-inc`**
@@ -53,6 +53,9 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-wave-mode`**
 - **`snd-slide`**
 - **`snd-env`**
+- **`snd-rm-period`**
+- **`snd-rm-count`**
+- **`snd-rm-sign`**
 - **`snd-seed`**
 - **`snd-noise-div`** — hold each sample this many HSYNC lines (1 = bright hiss
 - **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
@@ -70,6 +73,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-amp!`** — change the running voice attenuation (0 = full, 255 = silent).
 - **`snd-slide!`** — set a signed per-frame pitch slide (negative = falling, e.g. a zap).
 - **`snd-env!`** — set a signed per-frame amplitude envelope: +delta fades out, -delta swells.
+- **`snd-ringmod!`** — enable square ring mod (period samples, ~7867/period Hz; 0 = off).
 - **`snd-playing?`** — true if a voice is currently active.
 
 | Word | Stack | Kind | Bytes | Cycles |
@@ -82,6 +86,9 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-wave-mode` |  | var |  |  |
 | `snd-slide` |  | var |  |  |
 | `snd-env` |  | var |  |  |
+| `snd-rm-period` |  | var |  |  |
+| `snd-rm-count` |  | var |  |  |
+| `snd-rm-sign` |  | var |  |  |
 | `snd-seed` |  | var |  |  |
 | `snd-noise-div` |  | var |  |  |
 | `snd-poll` | `( -- )` | CODE |  |  |
@@ -99,6 +106,7 @@ non-blocking (cooperative) DAC sound for the CoCo
 | `snd-amp!` | `( att -- )` | colon |  |  |
 | `snd-slide!` | `( delta -- )` | colon |  |  |
 | `snd-env!` | `( delta -- )` | colon |  |  |
+| `snd-ringmod!` | `( period -- )` | colon |  |  |
 | `snd-playing?` | `( -- f )` | colon |  |  |
 
 ---
