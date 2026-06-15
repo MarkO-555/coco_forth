@@ -89,6 +89,20 @@ VARIABLE wt-sine
 : gong  ( -- )  wt-sine @ 330 0 40   0 6 1tone   24 snd-ringmod! ;  \ ring mod + amp decay = bell
 : warp  ( -- )  wt-sine @ 1200 0 24 -140 0 1tone 10 snd-ringmod! ;  \ slide sweeps the sidebands
 
+\ ── Classic game SFX (envelope + queue sequences + bidirectional slide) ──
+: kick  ( -- )  wt-sine @ 180 0 7 -90 45 1tone ;   \ drum: pitch drop + fast amp decay
+: coin  ( -- )  seq0                               \ two-tone pickup, second fades
+  SQR 988  0 4  0 0  nq-add
+  SQR 1319 0 12 0 12 nq-add ;
+: pwr   ( -- )  seq0                               \ rising major arpeggio (powerup)
+  SQR 523  0 3 0 0  nq-add
+  SQR 659  0 3 0 0  nq-add
+  SQR 784  0 3 0 0  nq-add
+  SQR 1047 0 9 0 12 nq-add ;
+: siren ( -- )  seq0                               \ wail up then down (two slides)
+  wt-sine @ 400 0 12  140 0 nq-add
+  wt-sine @ 800 0 12 -140 0 nq-add ;
+
 \ Two-tone dock chime.
 : dock  ( -- )
   seq0
@@ -118,7 +132,8 @@ VARIABLE wt-sine
   ." 0 NOISE" CR
   ." B BEEP  Z ZAP  X BOOM" CR
   ." C CHIRP  D DOCK  H HIT" CR
-  ." R RING  G GONG  W WARP" CR CR
+  ." R RING  G GONG  W WARP" CR
+  ." K KICK M COIN P PWR S SIRN" CR CR
   ." BREAK   QUIT" CR ;
 
 : marker  ( -- )
@@ -146,10 +161,14 @@ VARIABLE wt-sine
   DUP CHAR R = IF DROP ring  ELSE
   DUP CHAR G = IF DROP gong  ELSE
   DUP CHAR W = IF DROP warp  ELSE
+  DUP CHAR K = IF DROP kick  ELSE
+  DUP CHAR M = IF DROP coin  ELSE
+  DUP CHAR P = IF DROP pwr   ELSE
+  DUP CHAR S = IF DROP siren ELSE
   DUP 3     = IF DROP 0 running ! ELSE
   DROP
   THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN
-  THEN THEN THEN THEN THEN THEN THEN THEN ;
+  THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN THEN ;
 
 : main  ( -- )
   cls-black
