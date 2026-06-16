@@ -59,8 +59,8 @@ non-blocking (cooperative) DAC sound for the CoCo
 - **`snd-seed`**
 - **`snd-noise-div`** — hold each sample this many HSYNC lines (1 = bright hiss
 - **`snd-poll`** — emit one wavetable sample to the DAC if a new HSYNC row elapsed; non-blocking.
-- **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin.
-- **`snd-noise-fill`** — emit n noise samples (pitch via snd-noise-div, level via snd-amp).
+- **`snd-fill`** — emit n evenly HSYNC-locked samples back-to-back (blocking); for the VSYNC-wait spin. *(loop: ~8cy/iter, loop: ~150cy/iter)*
+- **`snd-noise-fill`** — emit n noise samples (pitch via snd-noise-div, level via snd-amp). *(loop: ~8cy/iter, loop: ~26cy/iter, loop: ~111cy/iter)*
 - **`freq>inc`**
 - **`snd-async-init`** — one-time setup: init the DAC path and noise (no default waveform).
 - **`snd-waveform`** — point the oscillator at a 256-byte signed wavetable (mode 0).
@@ -78,36 +78,36 @@ non-blocking (cooperative) DAC sound for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `snd-phase` |  | var |  |  |
-| `snd-inc` |  | var |  |  |
-| `snd-amp` |  | var |  |  |
-| `snd-frames` |  | var |  |  |
-| `snd-wave-base` |  | var |  |  |
-| `snd-wave-mode` |  | var |  |  |
-| `snd-slide` |  | var |  |  |
-| `snd-env` |  | var |  |  |
-| `snd-rm-period` |  | var |  |  |
-| `snd-rm-count` |  | var |  |  |
-| `snd-rm-sign` |  | var |  |  |
-| `snd-seed` |  | var |  |  |
-| `snd-noise-div` |  | var |  |  |
-| `snd-poll` | `( -- )` | CODE |  |  |
-| `snd-fill` | `( n -- )` | CODE |  |  |
-| `snd-noise-fill` | `( n -- )` | CODE |  |  |
-| `freq>inc` | `( freq -- inc )` | colon |  |  |
-| `snd-async-init` | `( -- )` | colon |  |  |
-| `snd-waveform` | `( addr -- )` | colon |  |  |
-| `snd-shape` | `( mode -- )` | colon |  |  |
-| `snd-rest` | `( frames -- )` | colon |  |  |
-| `snd-note` | `( freq amp frames -- )` | colon |  |  |
-| `snd-stop` | `( -- )` | colon |  |  |
-| `snd-frame` | `( -- )` | colon |  |  |
-| `snd-pitch!` | `( freq -- )` | colon |  |  |
-| `snd-amp!` | `( att -- )` | colon |  |  |
-| `snd-slide!` | `( delta -- )` | colon |  |  |
-| `snd-env!` | `( delta -- )` | colon |  |  |
-| `snd-ringmod!` | `( period -- )` | colon |  |  |
-| `snd-playing?` | `( -- f )` | colon |  |  |
+| `snd-phase` |  | var | 4 |  |
+| `snd-inc` |  | var | 4 |  |
+| `snd-amp` |  | var | 4 |  |
+| `snd-frames` |  | var | 4 |  |
+| `snd-wave-base` |  | var | 4 |  |
+| `snd-wave-mode` |  | var | 4 |  |
+| `snd-slide` |  | var | 4 |  |
+| `snd-env` |  | var | 4 |  |
+| `snd-rm-period` |  | var | 4 |  |
+| `snd-rm-count` |  | var | 4 |  |
+| `snd-rm-sign` |  | var | 4 |  |
+| `snd-seed` |  | var | 4 |  |
+| `snd-noise-div` |  | var | 4 |  |
+| `snd-poll` | `( -- )` | CODE |  | 217 |
+| `snd-fill` | `( n -- )` | CODE |  | 262 |
+| `snd-noise-fill` | `( n -- )` | CODE |  | 164 |
+| `freq>inc` | `( freq -- inc )` | colon | 24 | 330 |
+| `snd-async-init` | `( -- )` | colon | 60 | 883 |
+| `snd-waveform` | `( addr -- )` | colon | 20 | 279 |
+| `snd-shape` | `( mode -- )` | colon | 8 | 115 |
+| `snd-rest` | `( frames -- )` | colon | 34 | 503 |
+| `snd-note` | `( freq amp frames -- )` | colon | 36 | 868 |
+| `snd-stop` | `( -- )` | colon | 20 | 243 |
+| `snd-frame` | `( -- )` | colon | 76 | 1356 |
+| `snd-pitch!` | `( freq -- )` | colon | 10 | 445 |
+| `snd-amp!` | `( att -- )` | colon | 8 | 115 |
+| `snd-slide!` | `( delta -- )` | colon | 8 | 115 |
+| `snd-env!` | `( delta -- )` | colon | 8 | 115 |
+| `snd-ringmod!` | `( period -- )` | colon | 20 | 306 |
+| `snd-playing?` | `( -- f )` | colon | 12 | 183 |
 
 ---
 
@@ -123,7 +123,7 @@ Beam pixel-save/restore system for artifact-free rendering
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `beam-restore-slice` | `( buf start count -- )` | CODE | 121 | 280 |
+| `beam-restore-slice` | `( buf start count -- )` | CODE |  | 280 |
 
 ---
 
@@ -142,7 +142,7 @@ Clean program exit
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
 | `bye` | `( -- )` | colon | 10 | 2994 |
-| `basic-cold` | `( -- )` | CODE | 5 | 4 |
+| `basic-cold` | `( -- )` | CODE |  | 4 |
 | `exit-basic` | `( -- )` | colon | 10 | 2882 |
 
 ---
@@ -281,8 +281,8 @@ FujiNet device support for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `dw-write` | `( buf len -- )` | CODE | 169 | 95 |
-| `dw-read` | `( buf len -- ok )` | CODE | 178 | 114 |
+| `dw-write` | `( buf len -- )` | CODE |  | 95 |
+| `dw-read` | `( buf len -- ok )` | CODE |  | 114 |
 | `FN-OP-FUJI` |  | const |  |  |
 | `FN-CMD-READY` |  | const |  |  |
 | `FN-CMD-TIME` |  | const |  |  |
@@ -373,7 +373,7 @@ Spatial proximity query (Manhattan-distance bitmask)
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `prox-scan` | `( cx cy radius array count -- bitmask )` | CODE | 101 | 252 |
+| `prox-scan` | `( cx cy radius array count -- bitmask )` | CODE |  | 252 |
 
 ---
 
@@ -508,22 +508,22 @@ DAC sound library for the CoCo
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
-| `snd-init` | `( -- )` | CODE | 36 | 58 |
-| `snd-tone` | `( pitch duration -- )` | CODE | 60 | 114 |
-| `snd-tone1` | `( pitch duration -- )` | CODE | 81 | 143 |
-| `snd-click1` | `( -- )` | CODE | 44 | 70 |
+| `snd-init` | `( -- )` | CODE |  | 58 |
+| `snd-tone` | `( pitch duration -- )` | CODE |  | 90 |
+| `snd-tone1` | `( pitch duration -- )` | CODE |  | 100 |
+| `snd-click1` | `( -- )` | CODE |  | 27 |
 | `snd-noise1` | `( delay duration -- )` | colon | 52 | 889 |
-| `snd-saw` | `( step pitch duration -- )` | CODE | 59 | 124 |
-| `snd-tri` | `( pitch duration -- )` | colon | 24 | 614 |
-| `snd-sin` | `( pitch duration -- )` | CODE | 107 | 208 |
+| `snd-saw` | `( step pitch duration -- )` | CODE |  | 100 |
+| `snd-tri` | `( pitch duration -- )` | colon | 24 | 566 |
+| `snd-sin` | `( pitch duration -- )` | CODE |  | 184 |
 | `snd-noise` | `( delay duration -- )` | colon | 52 | 862 |
-| `snd-beep` | `( -- )` | colon | 14 | 225 |
-| `snd-zap` | `( -- )` | colon | 26 | 392 |
+| `snd-beep` | `( -- )` | colon | 14 | 201 |
+| `snd-zap` | `( -- )` | colon | 26 | 368 |
 | `snd-boom` | `( -- )` | colon | 14 | 973 |
 | `snd-pause` | `( count -- )` | colon | 12 | 245 |
-| `snd-chirp` | `( -- )` | colon | 46 | 1129 |
-| `snd-dock` | `( -- )` | colon | 24 | 401 |
-| `snd-hit` | `( -- )` | colon | 14 | 225 |
+| `snd-chirp` | `( -- )` | colon | 46 | 1057 |
+| `snd-dock` | `( -- )` | colon | 24 | 353 |
+| `snd-hit` | `( -- )` | colon | 14 | 201 |
 
 ---
 
@@ -602,19 +602,19 @@ waveform-table generators for the CoCo sound engine
 **Footprint:** ~360 bytes code (all six generators; no dead-code elimination, so including the file costs them all). Runtime: 256 bytes per generated wavetable, in RAM you provide -- not in the binary.
 
 - **`/wave`** — Constant: bytes per wavetable. Reserve /wave bytes per table.
-- **`gen-square`** — square wave: +124 first half, -124 second.
-- **`gen-saw`** — rising sawtooth ramp (deviation -128..+127).
-- **`gen-tri`** — triangle: ramp up then down.
-- **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency).
-- **`gen-sine-hq`** — a TRUE sine built from the kernel's 91-byte quarter-wave
+- **`gen-square`** — square wave: +124 first half, -124 second. *(has DO/LOOP)*
+- **`gen-saw`** — rising sawtooth ramp (deviation -128..+127). *(has DO/LOOP)*
+- **`gen-tri`** — triangle: ramp up then down. *(has DO/LOOP)*
+- **`gen-sine`** — two-lobe parabolic sine approximation (no sin dependency). *(has DO/LOOP)*
+- **`gen-sine-hq`** — a TRUE sine built from the kernel's 91-byte quarter-wave *(has DO/LOOP)*
 
 | Word | Stack | Kind | Bytes | Cycles |
 |------|-------|------|-------|--------|
 | `/wave` |  | const |  |  |
-| `gen-square` | `( addr -- )` | colon |  |  |
-| `gen-saw` | `( addr -- )` | colon |  |  |
-| `gen-tri` | `( addr -- )` | colon |  |  |
-| `gen-sine` | `( addr -- )` | colon |  |  |
-| `gen-sine-hq` | `( addr -- )` | colon |  |  |
+| `gen-square` | `( addr -- )` | colon | 50 | 711 |
+| `gen-saw` | `( addr -- )` | colon | 34 | 534 |
+| `gen-tri` | `( addr -- )` | colon | 62 | 855 |
+| `gen-sine` | `( addr -- )` | colon | 100 | 1670 |
+| `gen-sine-hq` | `( addr -- )` | colon | 98 | 1536 |
 
 ---
