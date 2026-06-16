@@ -16,6 +16,8 @@ kept in sync; either is a valid entry point.
 |------------------------------------------------------------------|-------------------------------------------------------|
 | 6809 / CoCo hardware (PIA, SAM, VDG, audio, IRQ, memory map)     | `coco-guides/coco_technical_reference.pdf`            |
 | VDG modes, MUX bits, semigraphics layouts, color sets            | `coco-guides/vdg-modes.md`                            |
+| Display modes compared — CoCo 1/2 (VDG) vs CoCo 3 (GIME)          | `coco-guides/display-modes.md`                         |
+| CoCo 3 / GIME architecture, 1/2→3 hardware evolution, history     | `coco-guides/coco3-intro.md`                          |
 | Memory map, build profiles (ROM mode / all-RAM mode)             | `kernel/README.md` § Memory map                 |
 | Specific kernel internal (DOCOL, NEXT, VAR_LP, IRQ masking, …)   | `kernel/kernel.asm` (heavily commented source)  |
 

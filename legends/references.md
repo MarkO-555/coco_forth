@@ -6,6 +6,12 @@ Every non-obvious claim in the Hall of Fame should trace back to an entry here. 
 
 This document is organized by source type: books, archives, community histories, interviews, personal sites, and other primary sources.
 
+A focused, sourced synthesis of the CoCo 3 / GIME story and the 1/2 → 3 hardware
+evolution lives in [`../coco-guides/coco3-intro.md`](../coco-guides/coco3-intro.md);
+the technical and lore sources it draws on are catalogued throughout this file
+(see especially the CoCo 3 hardware references below, Sub-Etha Software, Vintage
+is the New Old, and the Pitre & Loguidice book).
+
 ---
 
 ## Books
@@ -37,6 +43,53 @@ This document is organized by source type: books, archives, community histories,
 
 ---
 
+## CoCo 3 / GIME Hardware References
+
+Technical sources behind the GIME, MMU, palette, timer, and 1/2 → 3 evolution
+claims in [`../coco-guides/coco3-intro.md`](../coco-guides/coco3-intro.md).
+
+### *Color Computer 1/2/3 Hardware Programming* — Chris Lomont
+- **Access:** [lomont.org PDF](https://www.lomont.org/software/misc/coco/Lomont_CoCoHardware.pdf)
+- **Used for:** single-document hardware reference spanning all three machines;
+  GIME register map, 6-bit DAC sound, CoCo 1/2 HSYNC/VSYNC-only interrupts, the
+  GIME programmable timer, MMU 8×8K blocks, palette RGB↔composite conversion
+  table, and double-speed (SAM speed) behavior. Independently corroborates the
+  register addresses used in the CoCo 3 intro doc.
+
+### Sock's GIME Register Reference
+- **Access:** [6809.org.uk](https://www.6809.org.uk/twilight/sock/gime.html) (mirror: [cococommunity.net](https://www.cococommunity.net/socks-gime-register-reference/))
+- **Used for:** authoritative per-register, per-bit detail for `$FF90`–`$FFBF`
+  (INIT0/INIT1, IRQ/FIRQ enable, the 12-bit timer, video mode/resolution, scroll
+  and offset registers, the two MMU task sets and valid block ranges, palette
+  RRGGBB layout, and the +2/+1 timer reload quirk).
+
+### Tandy Color Computer 3 Service Manual
+- **Access:** [Internet Archive](https://archive.org/details/TandyServiceManualColorComputer3)
+- **Used for:** canonical register-list authority for the GIME (the only
+  manufacturer-published GIME documentation; internals were never fully released).
+
+### *Introducing the Color Computer 3* — Mark Siegel interview
+- **Access:** [tandy-trs80.com](https://tandy-trs80.com/introducing-the-color-computer-3/)
+  (audio version: [CoCo Nation Show ep. 236](https://cocotalk.podbean.com/e/episode-236-special-guest-mark-siegel/))
+- **Used for:** the design-budget quote ("a sound chip or a UART... so I opted
+  for neither. I put in programmable timers and an interrupt controller"); the
+  Deluxe Color Computer origin; the Microsoft-BASIC disassembly handed to
+  Microware; the July 30, 1986 Waldorf-Astoria announcement; the later
+  near-cancellation. Siegel as "father of the CoCo 3."
+
+### Nickolas Marentes — "256 Mode"
+- **Access:** [nickmarentes.com](https://nickmarentes.com/ProjectArchive/256mode.html)
+- **Used for:** the hidden-256-color-mode investigation (the R&D "Proposed
+  Feature List" doc, and the Prickett/Bjork/Siegel statements that it never
+  shipped); the 210-scanline `$FF99` display bug.
+
+### tlindner — CoCo 3 GIME Timer Tests
+- **Access:** [tlindner.macmess.org](https://tlindner.macmess.org/?p=762)
+- **Used for:** the timer-zero immediate-reassert behavior on real hardware and
+  the "Arkanoid sound bug" investigation.
+
+---
+
 ## Online Archives
 
 ### Color Computer Archive — [colorcomputerarchive.com](https://colorcomputerarchive.com)
@@ -54,6 +107,8 @@ Community-compiled history of the CoCo software scene.
 
 ### CoCopedia — [cocopedia.com](http://www.cocopedia.com/wiki/)
 CoCo community wiki.
+- **[GIME entry](https://www.cocopedia.com/wiki/index.php/GIME)** — GIME / ACVC / TCC1014 naming; the 1986 "Tequila" and 1987 "Tortilla" production revisions.
+- **[Color Computer 3 entry](https://www.cocopedia.com/wiki/index.php/Color_Computer_3)** — Super Extended Color BASIC authored by Microware (Microsoft ROM copied to RAM and patched), and notes on the patched code's bugs / incomplete hardware support.
 - **[CRC/Disto entry](http://www.cocopedia.com/wiki/index.php/CRC/Disto)** — CRC Computers Inc. / Disto product history; Tony Di Stefano as owner; Montreal 1983 founding; full product catalog.
 - **[J&M/Owl-Ware entry](https://www.cocopedia.com/wiki/index.php/J&M/Owl-Ware)** — J&M controller models (JFD-COCO, JFD-CP, JFD-EC); Alan Stallings reference.
 - **[Burke & Burke entry](http://www.cocopedia.com/wiki/index.php/Burke_%26_Burke)** — CoCo XT and CoCo XT-RTC product descriptions.
