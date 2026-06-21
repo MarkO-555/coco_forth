@@ -2157,6 +2157,7 @@ CODE_RG_CHAR
         LDB     VAR_RGNROWS
         LDX     ,S++
 @copy   LDA     ,Y+
+        ANDA    VAR_RGCOLMASK   ; recolor: $FF=white (identity), $55=blue, $AA=red
         STA     ,X
         LDA     VAR_RGBPR
         LEAX    A,X
@@ -2477,6 +2478,7 @@ VAR_RGGLYPHSZ   FCB     8       ; bytes per glyph
 VAR_RGNROWS     FCB     8       ; rows to copy per glyph
 VAR_RGBPR       FCB     32      ; bytes per VRAM row
 VAR_RGROWH      FCB     10      ; row height for cy positioning (pixels)
+VAR_RGCOLMASK   FCB     $FF     ; rg-char recolor mask: $FF=white (identity), $55=blue, $AA=red
 ;;; Beam system scratch (used by beam-trace/draw-slice/restore-slice in beam.fs)
 VAR_BEAM_BUF    FDB     0       ; path buffer pointer (during trace/draw/restore)
 VAR_BEAM_VRAM   FDB     0       ; VRAM byte address scratch

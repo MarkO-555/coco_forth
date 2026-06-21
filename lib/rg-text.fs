@@ -9,6 +9,11 @@
 \ Before calling rg-char/rg-type, set cv to the VRAM base address and cb
 \ to the bytes-per-row for the current mode.
 \
+\ Color: each font byte is ANDed with KVAR-RGCOLMASK as it is copied, so
+\ text takes the masked artifact color.  $FF = white (default, identity),
+\ $55 = blue, $AA = red.  Set KVAR-RGCOLMASK C! before drawing; reset to
+\ $FF afterwards.  This mirrors the kernel rg-char primitive's recolor.
+\
 \ This is the cursor+font5x7 form.  It SHADOWS the kernel's rg-char
 \ primitive for callers that INCLUDE rg-text.fs.  Apps that want the
 \ fast kernel rg-char (with explicit KVAR-RG* setup) should NOT include
@@ -29,7 +34,7 @@ VARIABLE cb                       \ cached bytes per row
   8 * cb @ * SWAP + cv @ +        \ dest = vram + cy*8*bpr + cx
   SWAP glyph-addr SWAP            \ ( glyph dest )
   7 0 DO
-    OVER I + C@
+    OVER I + C@  KVAR-RGCOLMASK C@ AND   \ recolor: $FF=white, $55=blue, $AA=red
     OVER I cb @ * + C!
   LOOP DROP DROP ;
 

@@ -7,7 +7,7 @@
 #   make dsks         build both DSKs
 #   make clean        remove all build artifacts
 
-DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time sound sound1bit sound-async
+DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time sound sound1bit sound-async colored-text
 KERNEL       = kernel
 DSK          = build/demos.dsk
 TUTORIAL_DSK = build/tutorial.dsk
