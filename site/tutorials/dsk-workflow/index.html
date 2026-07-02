@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disk Build &amp; Distribution — Getting Started with Bare Naked Forth</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <div class="page">
+
+    <!-- Opener -->
+    <div class="chapter-opener">
+      <div class="chapter-label">APPENDIX</div>
+      <div class="chapter-title">Disk Build &amp; Distribution</div>
+      <div class="chapter-subtitle">Packing the demos onto a single <code>.dsk</code> for real hardware</div>
+      <div class="chapter-green-bar"></div>
+    </div>
+
+    <!-- Page 1 -->
+    <div class="page-header">
+      <span>DISK BUILD &amp; DISTRIBUTION</span>
+      <span>1</span>
+    </div>
+    <div class="content clearfix">
+
+      <p>
+        Chapter 13 showed how to get <em>one</em> program onto a CoCo.
+        This appendix documents the other half of the story: bundling
+        <em>all</em> the demos into a single Disk BASIC image —
+        <code>build/demos.dsk</code> — that you can drop onto a CoCoSDC
+        card, serve over DriveWire, or mount in XRoar. One
+        <code>make</code> target does the whole job; here is exactly
+        what it does so you can reproduce or extend it.
+
+      <h2>What You Need — Toolshed's <code>decb</code></h2>
+
+      <p>
+        The disk image is assembled by <code>decb</code>, the DECB
+        disk utility from the <strong>Toolshed</strong> cross-development
+        package. It creates the empty image and copies each binary in
+        with a proper Disk BASIC directory entry.
+      </p>
+
+      <p>
+        On macOS the easiest route is Homebrew; otherwise clone and
+        build Toolshed and put its <code>bin/</code> on your
+        <code>PATH</code>:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> brew install toolshed
+<span class="comment"># or from source: https://github.com/boisy/toolshed</span>
+<span class="comment">#   git clone, make, then add the built bin/ to PATH</span></pre>
+
+      <div class="warning">
+        <strong>Path note:</strong> this project's <code>decb</code>
+        lives at <code>~/bin/decb</code> (Toolshed 2.2). If
+        <code>~/bin</code> isn't already on your <code>PATH</code>, run
+        the target as <code>PATH=~/bin:$PATH make dsk</code> — otherwise
+        <code>make</code> stops with <em>"decb not found on PATH"</em>.
+      </div>
+
+      <h2>Building the Image</h2>
+
+      <p>
+        From the project root, one command builds the kernel, compiles
+        every demo, and assembles the disk:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> make dsk
+
+  build/demos.dsk created with 14 programs.
+  Copy to SD card for FujiNet, or load in XRoar.
+  In DECB:  LOADM"BOUNCE":EXEC</pre>
+
+      <p>
+        The <code>dsk</code> target depends on <code>demos</code>, so
+        every <code>.bin</code> is rebuilt from its Forth source first
+        (see the <a href="../working-with-claude/index.html">development
+        workflow guide</a> for the per-demo compile step). Then it runs,
+        in effect:
+      </p>
+
+<pre class="shell"><span class="comment"># 1. create a blank Disk BASIC image</span>
+<span class="prompt">$</span> decb dskini build/demos.dsk
+
+<span class="comment"># 2. copy each demo in, giving it a CoCo (8.3) name</span>
+<span class="prompt">$</span> decb copy src/bounce/bounce.bin build/demos.dsk,BOUNCE.BIN -2
+<span class="prompt">$</span> decb copy src/tetris/tetris.bin build/demos.dsk,TETRIS.BIN -2
+<span class="comment">#   ... one copy line per program ...</span></pre>
+
+      <p>
+        The <code>-2</code> flag selects Disk BASIC (binary machine-code)
+        format — the same block layout <code>LOADM</code> expects. Each
+        <code>.bin</code> already carries its kernel block, app block, and
+        exec address, so no further processing is needed.
+      </p>
+
+    </div>
+
+    <!-- Page 2 -->
+    <div class="page-header">
+      <span>DISK BUILD &amp; DISTRIBUTION</span>
+      <span>2</span>
+    </div>
+    <div class="content clearfix">
+
+      <h2>Verifying the Image</h2>
+
+      <p>
+        List the directory to confirm every program landed:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> decb dir build/demos.dsk
+
+  HELLO    BIN  2  B  2
+  BOUNCE   BIN  2  B  4
+  CALC     BIN  2  B  4
+  KALEIDSC BIN  2  B  3
+  RAIN     BIN  2  B  3
+  TETRIS   BIN  2  B  4
+  RG-TEST  BIN  2  B  3
+  TYPEWRTR BIN  2  B  3
+  VDGMODES BIN  2  B  4
+  CLOCK    BIN  2  B  6
+  FNTIME   BIN  2  B  3
+  SOUND    BIN  2  B  3
+  SOUND1B  BIN  2  B  3
+  SNDASYNC BIN  2  B  4</pre>
+
+      <p>
+        Fourteen programs, each a Disk BASIC binary (<code>BIN</code>,
+        type&nbsp;2). The last column is the granule count — a rough size.
+        Names are truncated to the CoCo's 8-character limit
+        (<code>kaleidoscope</code>&nbsp;→&nbsp;<code>KALEIDSC</code>,
+        <code>sound-async</code>&nbsp;→&nbsp;<code>SNDASYNC</code>).
+      </p>
+
+      <h2>Loading on Real Hardware</h2>
+
+      <p>
+        The image is a standard 35-track single-sided Disk BASIC disk, so
+        every path from Chapter 13 works — now with a whole menu of
+        programs on one disk.
+      </p>
+
+      <h3>CoCoSDC / FujiNet (SD card)</h3>
+      <ol>
+        <li>Copy <code>build/demos.dsk</code> to your SD card.</li>
+        <li>Mount it as drive 0 from the SDC/FujiNet menu.</li>
+        <li>At the BASIC prompt, run any program by name:
+<pre class="forth">LOADM"TETRIS":EXEC</pre></li>
+      </ol>
+
+      <h3>DriveWire 4 (serial)</h3>
+      <ol>
+        <li>Point a DriveWire virtual drive at <code>demos.dsk</code>.</li>
+        <li>Connect the USB-serial adapter to the CoCo's bit-banger port.</li>
+        <li>Same load command — BASIC reads it over the wire:
+<pre class="forth">LOADM"BOUNCE":EXEC</pre></li>
+      </ol>
+
+      <h3>XRoar (emulator)</h3>
+      <p>
+        For a quick check without hardware, mount the disk and boot into
+        Disk BASIC:
+      </p>
+<pre class="shell"><span class="prompt">$</span> xroar -machine coco2bus \
+        -bas ~/.xroar/roms/bas12.rom \
+        -extbas ~/.xroar/roms/extbas11.rom \
+        -dos ~/.xroar/roms/disk11.rom \
+        build/demos.dsk
+<span class="comment"># then, at the OK prompt:</span>
+<span class="comment">#   LOADM"RAIN":EXEC</span></pre>
+
+      <div class="warning">
+        <strong>RTC demos:</strong> <code>CLOCK</code> and
+        <code>FNTIME</code> read the real-time clock from a FujiNet /
+        HDB-DOS-CC cartridge. They load and run from the disk like any
+        other program, but only show a live time when that cartridge is
+        present.
+      </div>
+
+      <h2>Single-Program Disks</h2>
+
+      <p>
+        The Makefile also has focused targets that build a one-program
+        disk — handy when you want to hand someone just the clock, or the
+        twelve tutorial examples:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> make tutorial-dsk   <span class="comment"># build/tutorial.dsk — chapters 1-12</span>
+<span class="prompt">$</span> make clock-dsk      <span class="comment"># build/clock.dsk</span>
+<span class="prompt">$</span> make fntime-dsk     <span class="comment"># build/fntime.dsk</span>
+<span class="prompt">$</span> make dsks           <span class="comment"># all of the above at once</span></pre>
+
+      <p>
+        Each follows the same <code>dskini</code> +&nbsp;<code>copy</code>
+        pattern. To add a new program to <code>demos.dsk</code>, build its
+        <code>.bin</code> and append one more <code>decb copy</code> line
+        to the <code>dsk</code> target in the top-level
+        <code>Makefile</code>.
+      </p>
+
+      <!-- Learned -->
+      <div class="learned" style="overflow:hidden">
+        <div class="learned-header">Disk Build in a Nutshell</div>
+        <div class="learned-cols">
+          <div class="learned-col">
+            <h4>The Tool</h4>
+            <p>Toolshed <code>decb</code> — DECB disk utility</p>
+            <p><code>~/bin/decb</code>; put it on <code>PATH</code></p>
+            <p><code>PATH=~/bin:$PATH make dsk</code></p>
+          </div>
+          <div class="learned-col">
+            <h4>The Build</h4>
+            <p><code>make dsk</code> → <code>build/demos.dsk</code></p>
+            <p><code>dskini</code> + one <code>copy&nbsp;-2</code> per demo</p>
+            <p>14 programs, verify with <code>decb dir</code></p>
+          </div>
+          <div class="learned-col">
+            <h4>The Load</h4>
+            <p>SD card, DriveWire, or XRoar</p>
+            <p><code>LOADM"NAME":EXEC</code> at the OK prompt</p>
+            <p>8-char names: <code>KALEIDSC</code>, <code>SNDASYNC</code></p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav">
+      <a href="../demos/index.html">← Demo Gallery</a>
+      <span class="spacer"></span>
+      <a href="../working-with-claude/index.html">Working with Claude →</a>
+    </div>
+
+  </div>
+</body>
+</html>

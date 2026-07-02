@@ -154,16 +154,37 @@ def load_manifest(manifest_path: Path) -> list[dict]:
             if "source" not in entry or "nav" not in entry:
                 sys.exit(f"error: manifest page missing source/nav: {entry!r}")
             source = REPO_ROOT / entry["source"]
+            kind = entry.get("kind", "generate")
+            output = entry.get("output") or default_output(source, kind)
             pages.append({
                 "source": source,
-                "output": entry.get("output") or output_name(source),
+                "output": output,
                 "nav": entry["nav"],
                 "section": section_title,
-                "kind": entry.get("kind", "generate"),
+                "kind": kind,
             })
     if not pages:
         sys.exit("error: manifest lists no pages")
     return pages
+
+
+def default_output(source: Path, kind: str) -> str:
+    """Derive the site-relative output/nav-target for a manifest entry.
+
+    generate -> a flat ``basename.html`` at the site root.
+    copy     -> the source's own repo-relative path, so the copied tree keeps
+                the exact layout that makes its internal links resolve. A
+                directory source has no single page, so its output (the landing
+                page to link in nav) must be given explicitly.
+    """
+    if kind == "copy":
+        if source.is_dir():
+            sys.exit(
+                f"error: copy entry for a directory needs an explicit "
+                f"'output' (its landing page): {source}"
+            )
+        return str(source.relative_to(REPO_ROOT))
+    return output_name(source)
 
 
 def build_nav(pages: list[dict], current_output: str, asset_prefix: str) -> str:
@@ -200,6 +221,31 @@ def copy_assets(site_dir: Path) -> None:
             shutil.copy2(asset, dest / asset.name)
 
 
+def copy_bespoke(page: dict, site_dir: Path) -> Path:
+    """Copy a hand-authored HTML file or tree into ``site_dir`` verbatim.
+
+    The copy preserves the source's repo-relative path (reference.html ->
+    site/reference.html, tutorials/ -> site/tutorials/). Preserving that
+    layout is what lets the book's own relative links (../reference.html,
+    ../style.css, sibling chapters) resolve unchanged -- no rewriting needed.
+
+    Links that point OUTSIDE the copied set (e.g. ../../src/... demo sources)
+    are left intact here and rewritten to GitHub in #546.
+    """
+    source = page["source"]
+    if not source.exists():
+        sys.exit(f"error: copy source not found: {source}")
+
+    rel = source.relative_to(REPO_ROOT)
+    dest = site_dir / rel
+    if source.is_dir():
+        shutil.copytree(source, dest, dirs_exist_ok=True)
+    else:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, dest)
+    return dest
+
+
 def render_page(page: dict, pages: list[dict], site_dir: Path,
                 renderer: "mistune.Markdown") -> Path:
     """Render one 'generate' page into ``site_dir``; return the output path."""
@@ -233,18 +279,21 @@ def build_site(manifest_path: Path, site_dir: Path) -> int:
     copy_assets(site_dir)
 
     renderer = make_renderer()
-    generated = 0
+    generated = copied = 0
     for page in pages:
-        if page["kind"] != "generate":
-            # 'copy' pages are handled in #544; skip for now but keep them in
-            # the nav so the structure is already correct.
-            continue
-        out_path = render_page(page, pages, site_dir, renderer)
+        if page["kind"] == "generate":
+            out_path = render_page(page, pages, site_dir, renderer)
+            generated += 1
+        elif page["kind"] == "copy":
+            out_path = copy_bespoke(page, site_dir)
+            copied += 1
+        else:
+            sys.exit(f"error: unknown kind {page['kind']!r} for {page['source']}")
         rel = out_path.relative_to(REPO_ROOT)
-        print(f"  {page['source'].name:<28} -> {rel}")
-        generated += 1
+        print(f"  {page['kind']:<8} {page['source'].name:<26} -> {rel}")
 
-    print(f"built {generated} page(s) into {site_dir.relative_to(REPO_ROOT)}/")
+    print(f"built {generated} generated + {copied} copied into "
+          f"{site_dir.relative_to(REPO_ROOT)}/")
     return 0
 
 

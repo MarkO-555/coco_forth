@@ -14,6 +14,13 @@
   ],
   "sections": [
     {
+      "title": "The Book",
+      "pages": [
+        { "source": "tutorials",     "nav": "Tutorial", "output": "tutorials/index.html", "kind": "copy" },
+        { "source": "reference.html", "nav": "Language Reference", "kind": "copy" }
+      ]
+    },
+    {
       "title": "About",
       "pages": [
         { "source": "COCO_RENOVATION.md", "nav": "The Vision" },

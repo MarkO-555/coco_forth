@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Working with Claude — Getting Started with Bare Naked Forth</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <div class="page">
+
+    <!-- Opener -->
+    <div class="chapter-opener">
+      <div class="chapter-label">APPENDIX</div>
+      <div class="chapter-title">Working with Claude</div>
+      <div class="chapter-subtitle">The method behind every line of this project</div>
+      <div class="chapter-green-bar"></div>
+    </div>
+
+    <!-- Page 1 -->
+    <div class="page-header">
+      <span>WORKING WITH CLAUDE</span>
+      <span>1</span>
+    </div>
+    <div class="content clearfix">
+
+      <p>
+        One fact shaped everything else: <strong>every line of this project
+        was written by Claude</strong>. The kernel, the compiler, the demos,
+        this page. The human never typed a line of code. Around 97% of the
+        commits name Claude as co-author; the rest are trivial.
+      </p>
+
+      <p>
+        But typing isn't coding. Claude does the typing, and often the first
+        cut of the ideas and the words too. The human does the rest: deciding
+        what to build, weighing each change, keeping what works, sending back
+        what doesn't. A lot is kept as-is. That's real coding, just without
+        the keystrokes.
+      </p>
+
+      <p>
+        Both sides contribute. But the human has the final say. They're the
+        <strong>gateway</strong>. Nothing ships without their approval.
+      </p>
+
+      <p>
+        This page is how that partnership works. None of it is a
+        nice-to-have. These are the moves that put a real toolchain on a 1982
+        machine. Skip one and the model drifts. The examples are from the
+        CoCo, but the method fits almost any project you'd build with Claude
+        Code.
+      </p>
+
+      <div class="tip">
+        <p>You don't need any of this just to <em>use</em> Bare Naked
+        Forth. It's how we built it. Take what's useful.</p>
+      </div>
+
+      <h2>Two Roles</h2>
+
+      <p>Think of it as two roles.</p>
+
+      <p>
+        <strong>You're the architect.</strong> You see the big picture. You
+        decide when to refactor and when to ship, and you catch the thing the
+        model can't see from inside the code.
+      </p>
+
+      <p>
+        <strong>Claude is the tireless junior.</strong> Fast, never tired,
+        knows the whole manual at once. And it never forgets between sessions,
+        because the memory lives in the repo, not in its head.
+      </p>
+
+      <p>
+        Your job shifts from typing to deciding and judging. That's still
+        coding, and it's still work: the hard part was always knowing what to
+        build and spotting what's wrong.
+      </p>
+
+      <h2>The Loop</h2>
+
+      <p>The cycle is fast, and each pass takes seconds:</p>
+
+      <ol>
+        <li><strong>Write</strong> Forth in a <code>.fs</code> file.</li>
+        <li><strong>Compile</strong> it with <code>fc.py</code> into a
+            <code>.bin</code>.</li>
+        <li><strong>Run</strong> it in XRoar, a spot-on CoCo emulator (see
+            the <a href="../xroar/index.html">XRoar appendix</a>).</li>
+        <li><strong>Ship</strong> it to real hardware when it's right: same
+            file, no changes.</li>
+      </ol>
+
+      <p>
+        A full rebuild takes under a second. You change something, run it, and
+        <em>see</em> it before your next thought. That speed is what makes the
+        whole thing work.
+      </p>
+
+      <pre class="shell"><span class="prompt">&gt;</span> Can you build and run this project?</pre>
+
+    </div>
+
+    <!-- Page 2 -->
+    <div class="page-header">
+      <span>WORKING WITH CLAUDE</span>
+      <span>2</span>
+    </div>
+    <div class="content clearfix">
+
+      <h2>The Repo Is the Memory</h2>
+
+      <p>
+        Claude starts each session with no memory of the last one. The repo is
+        the only thing that carries over, so it has to hold anything worth
+        keeping. The rule: <strong>if it matters, write it down in the repo, in
+        plain words.</strong> Whatever stays in the chat is gone when the
+        session ends.
+      </p>
+
+      <p>
+        Each kind of knowledge has a home. Conventions and how-to live in
+        <code>CLAUDE.md</code>, the work to be done lives in
+        <code>issues.jsonl</code>, and how the code works lives in the docs.
+        That's the first place Claude should look, ahead of the web.
+      </p>
+
+      <p>
+        Have Claude keep the docs up to date. What it learns now is then ready
+        for whoever picks it up next.
+      </p>
+
+      <pre class="shell"><span class="prompt">&gt;</span> Let's create a git repo with a README.md file.</pre>
+
+      <h2>The Repo Is Your Undo Button</h2>
+
+      <p>
+        Every working version is a commit, a save point you can always return
+        to. So you're never stuck with what Claude just did. Don't like where
+        the last hour went? Roll back to the last good commit and try again,
+        as many times as it takes.
+      </p>
+
+      <p>
+        It's a safety net, too. An API call drops, a battery dies, a run goes
+        off the rails. No disaster. You lose one session, not the project.
+        Commit often. The repo is the one thing you can't lose.
+      </p>
+
+      <h2>Break Up Plans into Issues</h2>
+
+      <p>
+        Work starts with a conversation. Often a long one: a real
+        back-and-forth where each side deepens the other's understanding of
+        what to build and why. It usually ends with Claude writing a plan, and the
+        urge is to let it start building. Don't. <strong>Turn the plan into
+        issues first.</strong>
+      </p>
+
+      <p>
+        Instead of executing Claude's plan, ask it to break up the plan
+        into trackable issues: one per change,
+        written to <code>issues.jsonl</code>, each holding
+        enough detail to complete later. That last part is the point: it
+        moves the plan into the repo, ready to start anytime we choose. A later
+        session with no memory of this conversation can still
+        pick it up. Claude does this well when you ask.
+      </p>
+
+      <div class="warning">
+        <strong>Why write the issue first?</strong> It pins the idea while
+        it's fresh, gives Claude a clear target, and makes "done" mean
+        something. Writing issues after the work loses all of that.
+      </div>
+
+      <p>
+        Filing an issue doesn't commit you to building it now. Sometimes you
+        create, build, and close one in a single session; other times it
+        waits. That flexibility is the whole trick for big jobs: break them
+        into pieces you can pick up whenever. Once the work is a list, you can
+        reorder it, cut it, and spot what runs in parallel.
+      </p>
+
+      <p>
+        Last, have Claude boil the plan down to a short
+        <strong>roadmap</strong> (in the README or a <code>ROADMAP.md</code>)
+        listing what's next, in order. That roadmap plus the issues is all the
+        next session needs to start.
+      </p>
+
+      <pre class="shell"><span class="prompt">&gt;</span> Hi Claude, what's next on the roadmap?</pre>
+
+    </div>
+
+    <!-- Page 3 -->
+    <div class="page-header">
+      <span>WORKING WITH CLAUDE</span>
+      <span>3</span>
+    </div>
+    <div class="content clearfix">
+
+      <h2>Test Before You Trust</h2>
+
+      <p>
+        Compiling isn't done. Done is <em>watching it run.</em> Claude drives
+        XRoar itself (kill, rebuild, run) and grabs a screenshot to check
+        the result. You step in for the feel: is the motion smooth, does the
+        tone sound right, does it hold up on a real CoCo? The loop stops and
+        asks instead of guessing.
+      </p>
+
+      <h2>Know When to Stop</h2>
+
+      <p>
+        Let Claude run on its own through the busywork: edits, compiles,
+        greps. Have it <strong>stop for the real calls</strong>: a design
+        choice, a look-and-see, anything hard to undo.
+      </p>
+
+      <h2>Build Your Own Tools</h2>
+
+      <p>
+        Claude writes code cheaply, so flip the usual default: need a tool?
+        Build it instead of adding another external dependency.
+      </p>
+
+      <p>
+        Every outside dependency is code you don't control. Here,
+        almost everything is in the repo, readable and yours: the whole
+        toolchain is a ~500-line kernel and a ~400-line Python compiler.
+      </p>
+
+      <h2>Make Every Byte Count</h2>
+
+      <p>
+        The 64&nbsp;K limit isn't a problem. It's the point. It makes every
+        choice deliberate. Some code goes in the kernel, some in the app, and
+        that's a real trade: a <code>CODE</code> word sits inline in the app;
+        a <code>KCODE</code> word sits in spare kernel space, keeping the app
+        small. Moving eight hot words to <code>KCODE</code> once freed 397
+        bytes in the app, and grew the kernel by the same amount. Name the
+        trade out loud and both sides stay honest.
+      </p>
+
+      <h2>What Only You Can Do</h2>
+
+      <p>
+        A few of your moves are worth more than all the typing they replace.
+        Three keep coming up:
+      </p>
+
+      <ul>
+        <li><strong>Point at the truth.</strong> Without specific answers,
+            Claude guesses.</li>
+        <li><strong>Say when to push and when to pivot.</strong> Stuck on a
+            hard bug, Claude may offer to fall back to what already worked.
+            "No, keep trying, the solution is not that complicated. Do you
+            need help?" is your call to make, and
+            it's often the difference between the result you wanted and one
+            that merely runs.</li>
+        <li><strong>See what it can't.</strong> Claude can't see its own
+            output. A one-pixel glitch every fourth frame, a sprite that sits
+            wrong: those live on the screen, not in the code, and only your
+            eye catches them. Flag it, and Claude can chase the math.</li>
+      </ul>
+
+      <p>
+        None of this is the tool falling short. It's the shape of the team.
+        Claude brings tireless, exact hands; you bring the pointer, the call,
+        and the eye.
+      </p>
+
+      <h2>Why It Works Anywhere</h2>
+
+      <p>
+        The CoCo made a perfect test bed: small enough to hold in your head,
+        fast to build, honest to emulate, instant to see. Its limits, once a
+        burden, are what make it easy to work on. A vague idea has nowhere to
+        hide.
+      </p>
+
+      <p>
+        But the method isn't about the CoCo. A repo that's both memory and
+        undo button; the habit of checking, measuring, and testing; a human
+        who decides and sees, plus a model that never tires. All of that
+        travels to any project. The CoCo just makes it easy to see. Use it,
+        and any project becomes one where the plan is written down, the
+        choices are on purpose, and nothing ships that you didn't want. That's
+        how this one got here, and why the next will too.
+      </p>
+
+      <!-- Learned -->
+      <div class="learned" style="overflow:hidden">
+        <div class="learned-header">The Method, at a Glance</div>
+        <div class="learned-cols">
+          <div class="learned-col">
+            <h4>The Setup</h4>
+            <p>The repo is the memory: nothing vital stays in chat</p>
+            <p>Talk it out, then break plans into issues</p>
+            <p>Prioritize and keep a short roadmap</p>
+            <p>Commit often: the repo is your undo button</p>
+          </div>
+          <div class="learned-col">
+            <h4>The Loop</h4>
+            <p>Write, compile, run, ship: seconds a pass</p>
+            <p>Watch it run before you call it done</p>
+            <p>Build your own tools, not dependencies</p>
+            <p>Make every byte count</p>
+          </div>
+          <div class="learned-col">
+            <h4>Who Does What</h4>
+            <p>You: decide, review, see what it can't</p>
+            <p>Claude: write, compile, capture, tireless</p>
+            <p>Let it run, but stop for the real calls</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 2.5em; padding-top: 1.2em; border-top: 1px solid #ccc; font-size: 0.9em; color: #777; font-style: italic;">
+        <p>Every line of this project (code and docs) was written with
+        <a href="https://claude.ai/" style="color:#777;">Claude</a>
+        (Anthropic), using the method above.</p>
+      </div>
+
+    </div>
+
+    <div class="nav">
+      <a href="../dsk-workflow/index.html">← Disk Build &amp; Distribution</a>
+      <span class="spacer"></span>
+      <a href="../xroar/index.html">The XRoar Emulator →</a>
+    </div>
+
+  </div>
+</body>
+</html>

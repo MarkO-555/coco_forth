@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The XRoar Emulator — Getting Started with Bare Naked Forth</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <div class="page">
+
+    <!-- Opener -->
+    <div class="chapter-opener">
+      <div class="chapter-label">APPENDIX</div>
+      <div class="chapter-title">The XRoar Emulator</div>
+      <div class="chapter-subtitle">Our command-line test bench</div>
+      <div class="chapter-green-bar"></div>
+    </div>
+
+    <!-- Page 1 -->
+    <div class="page-header">
+      <span>THE XROAR EMULATOR</span>
+      <span>1</span>
+    </div>
+    <div class="content clearfix">
+
+      <p>
+        Every program in this book was run in <strong>XRoar</strong> long
+        before it touched real hardware. XRoar is a cycle-accurate emulator
+        for the Dragon, the Tandy Color Computer (1/2/3), and the MC-10,
+        written by Ciaran Anscomb. For our purposes the important word is
+        <em>cycle-accurate</em>: the CoCo 2 it emulates behaves closely
+        enough to real iron — same 0.89&nbsp;MHz 6809, same SAM and VDG
+        timing — that a program which looks right in XRoar looks right on
+        the desk. That is what makes the tight edit&ndash;compile&ndash;run
+        loop possible.
+
+      <p>
+        We drive it entirely from the command line. There is a GUI, but the
+        CLI is what fits the workflow: a single <code>make run</code> pipes
+        a freshly compiled binary straight into the emulator, and the same
+        flags go into scripts, Makefiles, and the screenshots in this
+        book.
+      </p>
+
+      <div class="tip">
+        <p>XRoar isn't part of Bare Naked Forth — it's a separate,
+        excellent project. Install it from
+        <a href="https://www.6809.org.uk/xroar/">6809.org.uk/xroar</a>
+        (or Homebrew), and keep your CoCo ROM images in
+        <code>~/.xroar/roms/</code>.</p>
+      </div>
+
+      <h2>How We Run It</h2>
+
+      <p>
+        The canonical invocation — the one behind <code>make run</code> —
+        loads the two BASIC ROMs and executes a binary:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> xroar -machine coco2bus -ram 32 \
+        -bas ~/.xroar/roms/bas12.rom \
+        -extbas ~/.xroar/roms/extbas11.rom \
+        -run build/combined.bin</pre>
+
+      <p>Piece by piece:</p>
+
+      <ul>
+        <li><code>-machine coco2bus</code> — a CoCo 2 (NTSC, 6809). This is
+            our reference machine.</li>
+        <li><code>-ram 32</code> — 32&nbsp;KB, matching the default ROM-mode
+            build. All-RAM demos use <code>-ram 64</code>.</li>
+        <li><code>-bas</code> / <code>-extbas</code> — the Color BASIC and
+            Extended Color BASIC ROM images. In ROM mode our kernel lives
+            alongside a live BASIC, so both are loaded.</li>
+        <li><code>-run &lt;file&gt;</code> — load a DECB binary and execute
+            it immediately, exactly as <code>LOADM"…":EXEC</code> would.</li>
+      </ul>
+
+      <p>
+        The demo Makefiles wrap this in a <code>run</code> target with two
+        knobs: <code>XROAR_RAM</code> (32 or 64) and <code>XROAR_EXTRA</code>
+        for per-demo flags — most commonly <code>-kbd-translate</code>, which
+        maps your host keyboard onto the CoCo matrix so interactive demos
+        (the typewriter, the calculator) read the keys you expect.
+      </p>
+
+      <h2>Loading a Disk vs. Running a Binary</h2>
+
+      <p>
+        <code>-run</code> is the fast path, but it is not the whole story.
+        To exercise a real Disk BASIC image — the
+        <a href="../dsk-workflow/index.html"><code>build/demos.dsk</code></a>
+        from the disk-build guide — mount the disk and boot into Disk
+        BASIC instead:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> xroar -machine coco2bus \
+        -bas ~/.xroar/roms/bas12.rom \
+        -extbas ~/.xroar/roms/extbas11.rom \
+        -dos ~/.xroar/roms/disk11.rom \
+        build/demos.dsk
+<span class="comment"># then at the OK prompt:  LOADM"TETRIS":EXEC</span></pre>
+
+      <div class="warning">
+        <strong>A test path that hides bugs:</strong> <code>-run file.bin</code>
+        loads the binary directly and <em>bypasses DECB entirely</em>. That's
+        great for speed, but it means <code>-run</code> will happily execute
+        a program that would <em>hang</em> when loaded from a real disk with
+        <code>LOADM</code>. Before claiming a size- or layout-affecting
+        change is safe, build the <code>.dsk</code> and load it the real way.
+        Know which of your harnesses give false confidence.
+      </div>
+
+      <h2>Cartridges</h2>
+
+      <p>
+        Some demos want a cartridge ROM in the slot. The clock and
+        FujiNet-time demos read a real-time clock that arrives over an
+        HDB-DOS / DriveWire cart, so their Makefiles add:
+      </p>
+
+<pre class="shell">XROAR_EXTRA = -cart-rom ~/.xroar/roms/hdbdw3cc2.rom -cart-autorun -kbd-translate</pre>
+
+    </div>
+
+    <!-- Page 2 -->
+    <div class="page-header">
+      <span>THE XROAR EMULATOR</span>
+      <span>2</span>
+    </div>
+    <div class="content clearfix">
+
+      <h2>Debugging from the Command Line</h2>
+
+      <p>
+        XRoar's command-line build carries real debugging instruments. Three
+        are worth knowing.
+      </p>
+
+      <h3>The GDB Stub</h3>
+
+      <p>
+        Launch with <code>-gdb</code> and XRoar opens a GDB server on
+        <code>127.0.0.1:65520</code>. Point a host GDB at it and you can
+        step the 6809, read and write memory, and set breakpoints and
+        watchpoints on the running program:
+      </p>
+
+<pre class="shell"><span class="prompt">$</span> xroar -machine coco2bus -gdb <span class="comment">…</span> -run build/combined.bin &amp;
+<span class="prompt">$</span> gdb
+<span class="prompt">(gdb)</span> target remote :65520</pre>
+
+      <p>
+        The stub speaks the full 6809 register set (CC, A, B, DP, X, Y, U,
+        S, PC — plus the HD6309 extras on a 6309 machine) and has
+        XRoar-specific extensions to read and write the <strong>SAM
+        register</strong> — invaluable when a demo toggles SAM speed or
+        VRAM-offset bits and you need to see the current state.
+      </p>
+
+      <h3>Instruction Trace</h3>
+
+      <p>
+        A build with tracing enabled accepts <code>-trace</code>, streaming
+        each instruction as it executes. It's verbose — pipe it to a file
+        and grep — but when a threaded Forth word is going somewhere it
+        shouldn't, watching the actual <code>NEXT</code>/<code>DOCOL</code>
+        dispatch is the fastest way to see where the thread derails.
+      </p>
+
+      <h3>Snapshots</h3>
+
+      <p>
+        XRoar can save and reload machine snapshots, so a hard-to-reach
+        state (deep into a game, a specific corrupted screen) can be frozen
+        and returned to instead of reproduced by hand each time.
+      </p>
+
+      <h2>Working Habits</h2>
+
+      <p>
+        A few disciplines keep the emulator a help rather than a
+        distraction — the same ones the rest of this project runs on.
+      </p>
+
+      <div class="warning">
+        <strong>One launch, then observe.</strong> Always
+        <code>pkill -9 xroar</code> before relaunching, and never
+        spam-launch: start one instance, look at the result, then iterate.
+        Firing the emulator in a loop just buries the frame you needed to
+        see.
+      </div>
+
+      <p>
+        <strong>Screenshots, not synthetic keystrokes.</strong> On macOS,
+        injected keystrokes don't reliably reach XRoar's emulated keyboard —
+        so we verify by <em>looking</em>. A screen-capture tool grabs the
+        XRoar window after each run, which is how every screenshot in the
+        <a href="../demos/index.html">demo gallery</a> was made and how
+        visual bugs — flicker, a wrong colour, an off-by-one sprite — get
+        caught. When a demo needs a key pressed to advance, that's a moment
+        to drive it by hand and watch.
+      </p>
+
+      <div class="tip">
+        <p>XRoar also builds to <strong>WebAssembly</strong>
+        (<code>--enable-wasm</code>) — the same emulator, in a browser. That
+        is the door to running these demos inline in the docs one day,
+        without leaving the page.</p>
+      </div>
+
+      <!-- Learned -->
+      <div class="learned" style="overflow:hidden">
+        <div class="learned-header">XRoar from the Terminal</div>
+        <div class="learned-cols">
+          <div class="learned-col">
+            <h4>Running</h4>
+            <p><code>-machine coco2bus -ram 32/64</code></p>
+            <p><code>-bas</code> / <code>-extbas</code> ROMs from <code>~/.xroar/roms</code></p>
+            <p><code>-run file.bin</code> · or mount a <code>.dsk</code> + <code>-dos</code></p>
+          </div>
+          <div class="learned-col">
+            <h4>Debugging</h4>
+            <p><code>-gdb</code> → <code>target remote :65520</code></p>
+            <p><code>-trace</code> for instruction stream</p>
+            <p>Snapshots freeze/restore machine state</p>
+          </div>
+          <div class="learned-col">
+            <h4>Habits</h4>
+            <p><code>pkill -9 xroar</code> before each run</p>
+            <p><code>-run</code> bypasses DECB — also test the <code>.dsk</code></p>
+            <p>Verify by screenshot, not synthetic keys</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav">
+      <a href="../working-with-claude/index.html">← Working with Claude</a>
+      <span class="spacer"></span>
+      <a href="../index.html">Table of Contents →</a>
+    </div>
+
+  </div>
+</body>
+</html>
