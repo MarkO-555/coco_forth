@@ -30,6 +30,7 @@ import argparse
 import json
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -57,6 +58,12 @@ MANIFEST = TEMPLATE_DIR / "manifest.json"
 
 SITE_NAME = "CoCo Renovation"
 SITE_TAGLINE = "Bare Naked Forth"
+
+# Fallback GitHub base if the origin remote can't be read (see github_base()).
+DEFAULT_GITHUB = "https://github.com/ugufru/coco"
+# Ref the source links point at. main is the published branch; a moving ref is
+# the convention for "view source" doc links.
+GITHUB_BRANCH = "main"
 
 # --------------------------------------------------------------------------
 # Template
@@ -316,6 +323,66 @@ def _is_external(link: str) -> bool:
     return link.startswith(_EXTERNAL_PREFIXES)
 
 
+def github_base() -> str:
+    """Best-effort ``https://github.com/<owner>/<repo>`` from the origin remote.
+
+    Falls back to DEFAULT_GITHUB when git or the remote is unavailable (e.g. a
+    detached CI checkout), so the build never fails just to link out to source.
+    """
+    try:
+        url = subprocess.check_output(
+            ["git", "-C", str(REPO_ROOT), "config", "--get", "remote.origin.url"],
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        url = ""
+    if url.startswith("git@"):                       # git@github.com:owner/repo.git
+        host_path = url.split("@", 1)[1]
+        host, _, path = host_path.partition(":")
+        return f"https://{host}/{path.removesuffix('.git')}"
+    if url.startswith(("https://", "http://")):      # https://github.com/owner/repo.git
+        return url.removesuffix(".git")
+    return DEFAULT_GITHUB
+
+
+def rewrite_repo_links(site_dir: Path, base: str, branch: str) -> int:
+    """Point on-site links that target repo files (not on the site) at GitHub.
+
+    Same classification as validate_links: a link that doesn't resolve on the
+    site but does resolve in the repo is a live source reference. We rewrite it
+    to a GitHub URL -- ``blob`` for files, ``tree`` for directories -- keeping
+    any #fragment. Genuinely broken links (nowhere in repo) are left untouched
+    for validation to report. Returns the number of links rewritten.
+    """
+    count = 0
+    for html in sorted(site_dir.rglob("*.html")):
+        page_dir = html.parent.relative_to(site_dir)
+        text = html.read_text(encoding="utf-8", errors="replace")
+
+        def repl(match: "re.Match") -> str:
+            nonlocal count
+            attr, link = match.group(0), match.group(1).strip()
+            if not link or link.startswith("#") or _is_external(link):
+                return attr
+            target = link.split("#", 1)[0].split("?", 1)[0]
+            frag = link[len(target):]                # keeps '#anchor' / '?query'
+            if not target or _exists((html.parent / target).resolve()):
+                return attr                          # empty or resolves on-site
+            repo_path = (REPO_ROOT / page_dir / target).resolve()
+            if not repo_path.exists() or not repo_path.is_relative_to(REPO_ROOT):
+                return attr                          # dead or escapes repo -> leave
+            rel = repo_path.relative_to(REPO_ROOT)
+            kind = "tree" if repo_path.is_dir() else "blob"
+            url = f"{base}/{kind}/{branch}/{rel}{frag}"
+            count += 1
+            return attr.replace(f'"{link}"', f'"{url}"')
+
+        new_text = LINK_RE.sub(repl, text)
+        if new_text != text:
+            html.write_text(new_text, encoding="utf-8")
+    return count
+
+
 def _exists(target: Path) -> bool:
     """A link target resolves if it's a file, or a dir with an index.html."""
     if target.is_dir():
@@ -402,8 +469,11 @@ def find_unlisted(pages: list[dict], exclude: list[str]) -> list[str]:
 # Build
 # --------------------------------------------------------------------------
 
-def build_site(manifest_path: Path, site_dir: Path, strict: bool = False) -> int:
+def build_site(manifest_path: Path, site_dir: Path, strict: bool = False,
+               base: str | None = None, branch: str = GITHUB_BRANCH) -> int:
     pages, exclude = load_manifest(manifest_path)
+    if base is None:
+        base = github_base()
     site_dir.mkdir(parents=True, exist_ok=True)
 
     produced: set[Path] = set()
@@ -426,6 +496,11 @@ def build_site(manifest_path: Path, site_dir: Path, strict: bool = False) -> int
 
     print(f"built {generated} generated + {copied} copied into "
           f"{site_dir.relative_to(REPO_ROOT)}/")
+
+    # ---- Rewrite source links to GitHub (#546) ---------------------------
+    rewritten = rewrite_repo_links(site_dir, base, branch)
+    if rewritten:
+        print(f"rewrote {rewritten} source link(s) -> {base}/blob|tree/{branch}/")
 
     # ---- Validation ------------------------------------------------------
     problems = 0
@@ -484,8 +559,19 @@ def main(argv: list[str] | None = None) -> int:
         "--strict", action="store_true",
         help="exit non-zero if validation finds real problems (for CI)",
     )
+    parser.add_argument(
+        "--github-base", default=None,
+        help="GitHub base URL for source links (default: derived from origin)",
+    )
+    parser.add_argument(
+        "--github-branch", default=GITHUB_BRANCH,
+        help=f"branch/ref for source links (default: {GITHUB_BRANCH})",
+    )
     args = parser.parse_args(argv)
-    return build_site(args.manifest, args.output_dir, strict=args.strict)
+    return build_site(
+        args.manifest, args.output_dir, strict=args.strict,
+        base=args.github_base, branch=args.github_branch,
+    )
 
 
 if __name__ == "__main__":

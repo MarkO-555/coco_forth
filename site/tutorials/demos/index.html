@@ -126,7 +126,7 @@
             ASCII-to-VDG text output, colon definitions,
             <code>BEGIN</code>/<code>UNTIL</code> polling, clean exit via
             <code>lib/bye.fs</code>.</p>
-          <p class="demo-src"><a href="../../src/hello/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/hello">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -152,7 +152,7 @@
             erasing the old cells (skipping reused cells), so the piece is
             never absent for even one frame — the headline technique in the
             codebase.</p>
-          <p class="demo-src"><a href="../../src/tetris/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/tetris">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -174,7 +174,7 @@
             per frame to stay under the 16.7&nbsp;ms budget, and waits ~70
             HSYNC lines past VSYNC so VRAM writes trail the beam — killing
             most visible flicker.</p>
-          <p class="demo-src"><a href="../../src/bounce/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/bounce">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -193,7 +193,7 @@
           <p class="demo-meta"><strong>Technique:</strong> computation runs at
             ~1.78&nbsp;MHz via the SAM speed bit, dropping back to normal
             speed before vsync for a clean VDG refresh.</p>
-          <p class="demo-src"><a href="../../src/kaleidoscope/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/kaleidoscope">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -214,7 +214,7 @@
             updates, mutation, and spawn logic run at SAM double speed,
             dropping to normal speed before vsync — the same trick as the
             kaleidoscope.</p>
-          <p class="demo-src"><a href="../../src/rain/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/rain">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -236,7 +236,7 @@
             SHIFT), <code>EMIT</code> with ASCII-to-VDG encoding and
             scrolling, <code>AT</code> positioning, direct video-RAM
             <code>C@</code>/<code>C!</code> for the cursor.</p>
-          <p class="demo-src"><a href="../../src/typewriter/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/typewriter">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -253,7 +253,7 @@
             digits, direct video-RAM writes, inverse/normal video for the
             button flash, keyboard input via <code>KEY</code>, 16-bit signed
             arithmetic, number printing (<code>lib/print.fs</code>).</p>
-          <p class="demo-src"><a href="../../src/calculator/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/calculator">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -278,7 +278,7 @@
             V0&ndash;V2 (data rate) and F0&ndash;F6 (VRAM offset) plus the PIA
             <code>$FF22</code> mode pins while preserving bits 0&ndash;2,
             correctly handling SG6's ROM-disable.</p>
-          <p class="demo-src"><a href="../../src/vdg-modes/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/vdg-modes">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -297,7 +297,7 @@
             software sprites with inline data (<code>lib/sprite.fs</code>),
             sin table (<code>lib/trig.fs</code>), keypress stepping with BREAK
             early-exit.</p>
-          <p class="demo-src"><a href="../../src/rg-test/">source →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/rg-test">source →</a></p>
         </div>
       </div>
 
@@ -319,7 +319,7 @@
           <p class="demo-meta"><strong>Technique:</strong> recolouring ANDs
             each font byte with the colour mask during the glyph copy — no
             separate colored fonts and zero extra RAM.</p>
-          <p class="demo-src"><a href="../../src/colored-text/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/colored-text">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -347,7 +347,7 @@
             rounds brought a typical mid-minute frame to 22% of the
             ~14,917-cycle NTSC field budget; every visible frame fits in one
             vblank.</p>
-          <p class="demo-src"><a href="../../src/clock/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/clock">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -370,7 +370,7 @@
           <p class="demo-meta"><strong>Note:</strong> requires a real (or
             emulated) FujiNet as the time source — under plain XRoar it waits
             on a device that never answers.</p>
-          <p class="demo-src"><a href="../../src/fujinet-time/">source →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/fujinet-time">source →</a></p>
         </div>
       </div>
 
@@ -397,7 +397,7 @@
             in ROM-mode and all-RAM kernels; the README documents measured
             cycle costs (1&nbsp;ms&nbsp;&asymp;&nbsp;890 cycles) for every
             effect.</p>
-          <p class="demo-src"><a href="../../src/sound/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/sound">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -420,7 +420,7 @@
             mandatory because <code>$FF22</code> also carries VDG mode bits
             and RS-232 IN — a plain store would scramble the screen mode; the
             1-bit path is fixed 50% duty, so square tones and clicks only.</p>
-          <p class="demo-src"><a href="../../src/sound1bit/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/sound1bit">source &amp; README →</a></p>
         </div>
       </div>
 
@@ -443,7 +443,7 @@
             taking an interrupt or busy-waiting — no kernel changes and no
             blocking, so gameplay continues during playback (~1.1&nbsp;KB plus
             one runtime-generated wavetable).</p>
-          <p class="demo-src"><a href="../../src/sound-async/">source &amp; README →</a></p>
+          <p class="demo-src"><a href="https://github.com/ugufru/coco/tree/main/src/sound-async">source &amp; README →</a></p>
         </div>
       </div>
 
