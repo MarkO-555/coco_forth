@@ -29,7 +29,7 @@
 
     <!-- Header -->
     <div class="chapter-opener">
-      <div class="chapter-label">REFERENCE — VERSION 1.1</div>
+      <div class="chapter-label">REFERENCE — VERSION 1.2</div>
       <div class="chapter-title">Language<br>Reference</div>
       <div class="chapter-green-bar"></div>
     </div>
@@ -380,8 +380,8 @@
         </tr>
         <tr>
           <td class="word-name">AT</td>
-          <td class="stack-effect">( row col -- )</td>
-          <td>Set the cursor to the given row (0&ndash;15) and column (0&ndash;31).</td>
+          <td class="stack-effect">( col row -- )</td>
+          <td>Set the cursor to the given column (0&ndash;31) and row (0&ndash;15). Takes column first, then row (TOS).</td>
         </tr>
         <tr>
           <td class="word-name">TYPE</td>
@@ -632,8 +632,8 @@
         </tr>
         <tr>
           <td class="word-name">KERN-VERSION</td>
-          <td><code>$0101</code> (1.1)</td>
-          <td>Kernel version in packed BCD: high byte is the major version, low byte is the minor (so <code>$0101</code> means 1.1). Exported from <code>KERN_VERSION</code> in <code>kernel.asm</code> via the kernel map. Use it to gate features or print the version, e.g. <code>hello.fs</code> prints it on boot.</td>
+          <td><code>$0102</code> (1.2)</td>
+          <td>Kernel version in packed BCD: high byte is the major version, low byte is the minor (so <code>$0102</code> means 1.2). Exported from <code>KERN_VERSION</code> in <code>kernel.asm</code> via the kernel map. Use it to gate features or print the version, e.g. <code>hello.fs</code> prints it on boot.</td>
         </tr>
       </table>
 
