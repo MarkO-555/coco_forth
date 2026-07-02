@@ -5,6 +5,7 @@
 #   make dsk          build demos DSK (build/demos.dsk)
 #   make tutorial-dsk build tutorial examples DSK (build/tutorial.dsk)
 #   make dsks         build both DSKs
+#   make site         build the static documentation site (site/)
 #   make clean        remove all build artifacts
 
 DEMOS        = hello bounce calculator kaleidoscope rain tetris rg-test typewriter vdg-modes clock fujinet-time sound sound1bit sound-async colored-text
@@ -14,7 +15,7 @@ TUTORIAL_DSK = build/tutorial.dsk
 FNTIME_DSK   = build/fntime.dsk
 CLOCK_DSK    = build/clock.dsk
 
-.PHONY: all kernel demos dsk tutorial-dsk dsks fntime-dsk clock-dsk lib-readme clean
+.PHONY: all kernel demos dsk tutorial-dsk dsks fntime-dsk clock-dsk lib-readme site clean
 
 all: lib-readme demos
 
@@ -141,6 +142,11 @@ clock-dsk: kernel
 	@echo "  $(CLOCK_DSK) created."
 	@echo "  Copy to your FujiNet SD card."
 	@echo "  In DECB:  LOADM\"CLOCK\":EXEC"
+
+# Build the static documentation site into site/ (issue #539).
+# Requires the markdown parser: python3 -m pip install -r tools/requirements.txt
+site:
+	@python3 tools/build-site.py
 
 clean:
 	@for d in $(DEMOS); do rm -f src/$$d/$$d.bin; done

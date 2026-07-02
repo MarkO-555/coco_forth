@@ -1,0 +1,7 @@
+# Python dependencies for the CoCo Renovation doc tooling.
+#
+# Install with:  python3 -m pip install -r tools/requirements.txt
+#
+# mistune -- pure-Python markdown parser used by build-site.py (#539/#541).
+# Pinned so the generated site is reproducible across machines.
+mistune==3.3.2

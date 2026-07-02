@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoCo Renovation — Modernizing the 6809 Development Experience</title>
+</head>
+<body>
+  <main class="doc">
+<h1>CoCo Renovation — Modernizing the 6809 Development Experience</h1>
+<p><em>February 19, 2026</em></p>
+<hr />
+<h2>The Idea</h2>
+<p>The difference between <em>emulation</em> and <em>renovation</em>. Emulation runs the old thing in a new context. Renovation keeps the hardware authentic but upgrades the tooling layer. Almost nobody does renovation, even when the hardware supports it completely.</p>
+<p>The TRS-80 Color Computer had 64K of RAM, a Motorola 6809 processor, a ROM cartridge slot, and a development experience defined by cassette tapes, 32-column editors, and assemblers that couldn't handle a project of any real size (EDTASM+ on ROM cartridge, saving to cassette or disk). The hardware was never the embarrassing part. The software ecosystem of 1982 was.</p>
+<p>The question: what if you answered &quot;what if Tandy had made better software decisions&quot; with a ROM cartridge you can plug in today?</p>
+<hr />
+<h2>Why the 6809 Is Worth Renovating</h2>
+<p>The 6809 is not nostalgia — it's an objectively elegant processor:</p>
+<ul>
+<li>Two 16-bit index registers (X, Y)</li>
+<li>Two stack pointers (S and U) — call stack and data stack as first-class concepts</li>
+<li>PC-relative addressing throughout — position-independent code is natural, not a hack</li>
+<li>Clean orthogonal ISA, clearly influenced by the PDP-11</li>
+<li>Rich addressing modes without the irregularities of the Z80 or 6502</li>
+</ul>
+<p>Writing 6809 assembly is actually pleasant. The ISA isn't the limitation of a vintage CoCo. The cassette interface, the 32-column screen editor, the assembler that couldn't handle a project of real size — those are the limitations. And they're all software.</p>
+<hr />
+<h2>The ROM Cartridge as Delivery Mechanism</h2>
+<p>The CoCo pak slot is exactly the right vehicle. It's:</p>
+<ul>
+<li>Non-destructive — pull the cartridge, you have a stock CoCo</li>
+<li>Clean-booting — maps into a well-defined address space</li>
+<li>Designed for this — Tandy intended cartridges to replace or extend the OS</li>
+</ul>
+<p>A modern cartridge with flash storage and an SD card controller could provide a complete self-contained development environment. The flash holds the OS/tools ROM. The SD card holds source files, assembled binaries, and projects.</p>
+<hr />
+<h2>What the Cartridge Provides</h2>
+<p>A complete on-device renovation environment, fitting comfortably in ROM:</p>
+<table>
+<thead>
+<tr>
+  <th>Component</th>
+  <th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Shell</td>
+  <td>Replaces the BASIC prompt; command line with path, history</td>
+</tr>
+<tr>
+  <td>Filesystem driver</td>
+  <td>FAT16 or a simple custom FS on microSD</td>
+</tr>
+<tr>
+  <td>Screen editor</td>
+  <td>Real cursor movement, undo, search — even at 32/40 columns</td>
+</tr>
+<tr>
+  <td>Assembler</td>
+  <td>Macros, labels, local scopes, include files, conditional assembly</td>
+</tr>
+<tr>
+  <td>Linker</td>
+  <td>The thing EDTASM+ most painfully lacked</td>
+</tr>
+<tr>
+  <td>Debug monitor</td>
+  <td>Breakpoints, memory inspection, register display, disassembly</td>
+</tr>
+<tr>
+  <td>Transfer</td>
+  <td>XMODEM or serial bridge for moving files to/from a modern machine</td>
+</tr>
+</tbody>
+</table>
+<p>That's the complete toolchain. It fits in 64K of ROM, leaving the full 64K of RAM for your program.</p>
+<hr />
+<h2>The Workflow</h2>
+<p>Write code → save to SD → assemble on-device → run → inspect → iterate.</p>
+<p>Similar in structure to the PyGamer workflow (write externally, deploy, test), except the assembler runs <em>on the CoCo itself</em>. That distinction matters. There's something fundamentally different about programming a machine on itself versus cross-compiling from a laptop. The constraints are present in your hands, not abstracted away. You feel the 64K. You feel the register pressure. The feedback is immediate and embodied.</p>
+<hr />
+<h2>What Already Exists</h2>
+<p>The CoCo community has gotten partway there. The pieces exist, mostly as cross-development tools rather than a cohesive on-device experience:</p>
+<table>
+<thead>
+<tr>
+  <th>Tool</th>
+  <th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>CoCoSDC</td>
+  <td>SD card storage interface for real CoCo hardware</td>
+</tr>
+<tr>
+  <td>DriveWire 4</td>
+  <td>Modern PC acts as disk server over serial connection</td>
+</tr>
+<tr>
+  <td>CMOC</td>
+  <td>Working C compiler targeting 6809/CoCo</td>
+</tr>
+<tr>
+  <td>NitrOS-9</td>
+  <td>Modernized OS-9 — a real multitasking OS for the CoCo</td>
+</tr>
+<tr>
+  <td>lwasm</td>
+  <td>Excellent modern 6809 assembler (cross-development)</td>
+</tr>
+<tr>
+  <td>toolshed</td>
+  <td>Cross-development utilities</td>
+</tr>
+<tr>
+  <td>XRoar / MAME</td>
+  <td>Accurate emulators with debugging support</td>
+</tr>
+</tbody>
+</table>
+<p>What doesn't exist: a self-contained on-device environment that makes the whole workflow feel cohesive and modern without leaving the machine.</p>
+<hr />
+<h2>The Philosophical Point</h2>
+<p>Why <em>wouldn't</em> you do this?</p>
+<p>The hardware works. The processor is elegant. The only things that made it feel limited were the ecosystem choices of 1982. A ROM cartridge is just a different set of software ROM choices. You're not modifying the hardware, you're not emulating anything — you're answering the question &quot;what if they'd made better software decisions&quot; with a physical object you can plug in and pull out.</p>
+<p>This isn't about making the CoCo into something it isn't. It's about making it into what it always <em>could</em> have been. The 6809 was running multitasking operating systems (OS-9) in the early 1980s. The hardware had headroom. The tooling didn't keep up.</p>
+<p>Renovating the tooling layer of a functioning vintage platform preserves authenticity — you're still writing 6809 assembly, still constrained to 64K, still running on real hardware — while removing the friction that was always accidental rather than essential.</p>
+
+  </main>
+</body>
+</html>
