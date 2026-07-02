@@ -25,13 +25,40 @@ body {
   line-height: 1.65;
 }
 
+/* ---- Site header --------------------------------------------------------- */
+
+.doc-header {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-top: 4px solid var(--green);
+  padding: 1rem 3.5rem 0.9rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.doc-brand {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--green-dark);
+}
+
+.doc-brand-sub {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 /* ---- Layout: sidebar + article ------------------------------------------ */
 
 .doc-layout {
   max-width: 1100px;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 60vh;
   background: var(--surface);
+  border-top: 1px solid var(--border-soft);
   display: grid;
   grid-template-columns: 1fr;          /* single column until a sidebar exists */
 }
@@ -187,6 +214,21 @@ body {
 }
 
 .doc-article tbody tr:nth-child(even) { background: var(--green-light); }
+
+/* ---- Site footer --------------------------------------------------------- */
+
+.doc-footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-top: 1px solid var(--border-soft);
+  padding: 1.2rem 3.5rem 2rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.doc-footer code { font-family: var(--font-mono); font-style: normal; }
 
 /* ---- Responsive ---------------------------------------------------------- */
 

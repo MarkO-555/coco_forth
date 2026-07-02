@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/docs.css">
+  <title>Setting Up a Bare Naked Forth Project — CoCo Renovation</title>
+</head>
+<body>
+  <header class="doc-header">
+    <span class="doc-brand">CoCo Renovation</span>
+    <span class="doc-brand-sub">Bare Naked Forth</span>
+  </header>
+  <div class="doc-layout">
+    <nav class="doc-sidebar">
+      <h2>About</h2>
+      <a href="coco-renovation.html">The Vision</a>
+      <a href="roadmap.html">Roadmap</a>
+      <h2>Guides</h2>
+      <a href="project-setup.html" class="current">Project Setup</a>
+      <a href="contributing.html">Contributing</a>
+      <h2>Reference</h2>
+      <a href="resources.html">Resources</a>
+      <a href="ans-forth-comparison.html">ANS-Forth Comparison</a>
+    </nav>
+    <article class="doc-article">
+<h1>Setting Up a Bare Naked Forth Project</h1>
+<p>How to build a CoCo Forth program from scratch — the minimal case, the
+defaults each option falls back to, and the knobs available when defaults
+don't fit.</p>
+<hr />
+<h2>TL;DR — minimal project</h2>
+<pre><code class="language-sh">mkdir src/myapp
+cat &gt; src/myapp/Makefile &lt;&lt;'EOF'
+NAME = myapp
+
+include ../../make/demo.mk
+EOF
+
+cat &gt; src/myapp/myapp.fs &lt;&lt;'EOF'
+INCLUDE ../../lib/bye.fs
+
+: main
+  CHAR H EMIT  CHAR I EMIT  CR
+  exit-basic ;
+
+main
+EOF
+
+cd src/myapp &amp;&amp; make run
+</code></pre>
+<p>Three lines of Makefile and a <code>.fs</code> file. Builds the ROM-mode kernel
+automatically, links your app against it, and launches XRoar with a 32K CoCo.
+<code>BREAK</code> returns to the BASIC <code>OK</code> prompt.</p>
+<hr />
+<h2>Project layout</h2>
+<p>A &quot;project&quot; is one directory under <code>src/</code> with two files:</p>
+<pre><code>src/&lt;name&gt;/
+├── Makefile      → 3 lines: NAME = ..., include ../../make/demo.mk
+└── &lt;name&gt;.fs     → your Forth source (or whatever you set SRC to)
+</code></pre>
+<p>The shared rules in <a href="../make/demo.mk"><code>make/demo.mk</code></a> handle:</p>
+<ul>
+<li>building the kernel (if not already built)</li>
+<li>running <code>fc.py</code> to combine kernel + app into a DECB binary</li>
+<li>launching XRoar with the right RAM size and ROM set</li>
+</ul>
+<p>Most projects only need to set <code>NAME</code>. Everything else has a default.</p>
+<hr />
+<h2>Build profiles — ROM vs all-RAM</h2>
+<p>The kernel ships in two flavours. Pick the one that matches your needs:</p>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ROM mode (default)</th>
+  <th>all-RAM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Build flag</td>
+  <td>(none)</td>
+  <td><code>lwasm -DALL_RAM=1</code></td>
+</tr>
+<tr>
+  <td>Demo Makefile</td>
+  <td><code>KERNEL_VARIANT</code> (unset)</td>
+  <td><code>KERNEL_VARIANT = allram</code></td>
+</tr>
+<tr>
+  <td>Kernel ORG</td>
+  <td><code>$2000</code></td>
+  <td><code>$E000</code></td>
+</tr>
+<tr>
+  <td>App base</td>
+  <td><code>$3000</code></td>
+  <td><code>$2000</code></td>
+</tr>
+<tr>
+  <td>Min RAM</td>
+  <td>32K</td>
+  <td>64K</td>
+</tr>
+<tr>
+  <td>BASIC ROMs</td>
+  <td>live (<code>$A000+</code>)</td>
+  <td>paged out</td>
+</tr>
+<tr>
+  <td><code>BREAK</code> exits</td>
+  <td>cleanly to <code>OK</code> prompt</td>
+  <td>only halts (no clean exit)</td>
+</tr>
+<tr>
+  <td>App code budget</td>
+  <td>~10K (between kernel and font)</td>
+  <td>~24K contiguous</td>
+</tr>
+<tr>
+  <td>Bootstrap</td>
+  <td>none — DECB exec → <code>START</code></td>
+  <td>yes — <code>$0E00</code> stage+copy</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use ROM mode</strong> unless you specifically need &gt;10K of contiguous code or
+the upper 32K of RAM. Most demos fit easily in ROM mode.</p>
+<p><strong>Use all-RAM</strong> when:</p>
+<ul>
+<li>Your app is bigger than ~10K (e.g. tetris, vdg-modes-cycling-everything)</li>
+<li>You need RAM at <code>$8000+</code> for buffers/data (e.g. clock's double-buffering)</li>
+<li>You're calling FujiNet/DriveWire from inside an all-RAM session and need
+<code>fujinet.fs</code>'s SAM TY toggling (see Edge Cases below)</li>
+</ul>
+<p>See <a href="kernel/README.md#memory-map"><code>kernel/README.md</code></a> for full memory maps.</p>
+<hr />
+<h2>Configuration knobs</h2>
+<p>Knobs live at three levels. Reach for the lowest level that solves your
+problem.</p>
+<h3>Level 1 — demo Makefile (per-project)</h3>
+<p>These go above <code>include ../../make/demo.mk</code>:</p>
+<table>
+<thead>
+<tr>
+  <th>Variable</th>
+  <th>Default</th>
+  <th>What it does</th>
+  <th>When to set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>NAME</code></td>
+  <td>(required)</td>
+  <td>Binary stem (<code>NAME.bin</code>)</td>
+  <td>Always</td>
+</tr>
+<tr>
+  <td><code>SRC</code></td>
+  <td><code>$(NAME).fs</code></td>
+  <td>Top-level Forth source</td>
+  <td>Source file has a different name</td>
+</tr>
+<tr>
+  <td><code>EXTRA_DEPS</code></td>
+  <td>empty</td>
+  <td>Extra prerequisites for <code>$(BIN)</code></td>
+  <td>Source uses <code>INCLUDE lib/foo.fs</code>; list those libs so <code>make</code> rebuilds when they change</td>
+</tr>
+<tr>
+  <td><code>KERNEL_VARIANT</code></td>
+  <td>(unset = ROM)</td>
+  <td><code>allram</code> selects the all-RAM kernel</td>
+  <td>App needs &gt;10K code or hi-RAM data</td>
+</tr>
+<tr>
+  <td><code>XROAR_RAM</code></td>
+  <td><code>32</code> (ROM) / <code>64</code> (allram)</td>
+  <td>RAM kB for XRoar <code>-ram</code> flag</td>
+  <td>Want to test on a 16K layout</td>
+</tr>
+<tr>
+  <td><code>XROAR_EXTRA</code></td>
+  <td><code>-kbd-translate</code></td>
+  <td>Extra args appended to XRoar</td>
+  <td>NTSC artifacts (<code>-tv-input cmp-br</code>); cart ROM (<code>-cart-rom ...</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Example — RG6 demo with NTSC artifact colour:</p>
+<pre><code class="language-make">NAME        = mydemo
+EXTRA_DEPS  = ../../lib/rg-pixel.fs
+XROAR_EXTRA = -tv-input cmp-br -kbd-translate
+
+include ../../make/demo.mk
+</code></pre>
+<h3>Level 2 — fc.py flags (compile-time)</h3>
+<p>Set these by appending to the <code>$(FC) ...</code> line in your Makefile, or running
+<code>fc.py</code> directly. Most projects don't need any of these.</p>
+<table>
+<thead>
+<tr>
+  <th>Flag</th>
+  <th>Default</th>
+  <th>What it does</th>
+  <th>When to set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>--kernel &lt;path&gt;</code></td>
+  <td><code>build/kernel.map</code></td>
+  <td>lwasm map for symbol resolution</td>
+  <td>Custom kernel build</td>
+</tr>
+<tr>
+  <td><code>--kernel-bin &lt;path&gt;</code></td>
+  <td>(none)</td>
+  <td>kernel <code>.bin</code> to bundle into output</td>
+  <td>Always (the demo.mk rule sets it)</td>
+</tr>
+<tr>
+  <td><code>--output &lt;path&gt;</code></td>
+  <td><code>&lt;src&gt;.bin</code></td>
+  <td>output filename</td>
+  <td>Renaming the binary</td>
+</tr>
+<tr>
+  <td><code>--base &lt;addr&gt;</code></td>
+  <td><code>APP_BASE</code> from kernel.map</td>
+  <td>Override app load address</td>
+  <td>Reserving address space below the app for buffers (e.g. extra VRAM bank)</td>
+</tr>
+<tr>
+  <td><code>--hole &lt;addr&gt;,&lt;size&gt;</code></td>
+  <td>(none)</td>
+  <td>Reserve a region inside the app's address space — fc.py emits two records skipping the hole</td>
+  <td>Want a fixed-address buffer mid-app (sprite tables, lookup tables) without growing the binary</td>
+</tr>
+<tr>
+  <td><code>--stage-base &lt;addr&gt;</code></td>
+  <td>auto-pack after bootstrap</td>
+  <td>Pin all-RAM staging area</td>
+  <td>Want KCODE words at a stable address across kernel growth (used by spacewarp project)</td>
+</tr>
+<tr>
+  <td><code>--cycles</code></td>
+  <td>off</td>
+  <td>Print per-word 6809 cycle cost estimates</td>
+  <td>Performance tuning</td>
+</tr>
+</tbody>
+</table>
+<p>Common scenarios:</p>
+<ul>
+<li><strong>&quot;I have a 6K back buffer that needs a fixed address.&quot;</strong> Use <code>--hole</code>
+to keep that range out of the app binary, set a <code>CONSTANT</code> in your <code>.fs</code>
+at the same address. Or use <code>--base</code> to push the entire app past it.</li>
+<li><strong>&quot;My binary keeps shifting around as the kernel grows and breaks
+external tools.&quot;</strong> Use <code>--stage-base</code> to pin staging.</li>
+<li><strong>&quot;I want to know which Forth word burns the most cycles.&quot;</strong> Use
+<code>--cycles</code>.</li>
+</ul>
+<h3>Level 3 — kernel build overrides (lwasm <code>-D</code> flags)</h3>
+<p>These rebuild the kernel itself. Edit <code>kernel/Makefile</code> or invoke
+lwasm directly. Almost no project needs this — only relevant when you're
+targeting an unusual machine (16K), porting to a different memory map, or
+building a custom kernel variant.</p>
+<table>
+<thead>
+<tr>
+  <th>Define</th>
+  <th>Default (ROM)</th>
+  <th>Default (all-RAM)</th>
+  <th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>ALL_RAM</code></td>
+  <td>undefined</td>
+  <td><code>1</code></td>
+  <td>Selects all-RAM mode (changes everything below)</td>
+</tr>
+<tr>
+  <td><code>KERNEL_ORG</code></td>
+  <td><code>$2000</code></td>
+  <td><code>$E000</code></td>
+  <td>Where the kernel ORGs</td>
+</tr>
+<tr>
+  <td><code>APP_BASE</code></td>
+  <td><code>$3000</code></td>
+  <td><code>$2000</code></td>
+  <td>Where the app loads</td>
+</tr>
+<tr>
+  <td><code>VRAM_BASE</code></td>
+  <td><code>$0600</code></td>
+  <td><code>$0600</code></td>
+  <td>RG6 VRAM location</td>
+</tr>
+<tr>
+  <td><code>FONT_BASE</code></td>
+  <td><code>$5800</code></td>
+  <td><code>$9000</code></td>
+  <td>Font glyph table location</td>
+</tr>
+<tr>
+  <td><code>TRIG_BASE</code></td>
+  <td><code>$7800</code></td>
+  <td><code>$86CC</code></td>
+  <td>Sine lookup table location</td>
+</tr>
+<tr>
+  <td><code>RSP_INIT</code></td>
+  <td><code>$8000</code></td>
+  <td><code>$E000</code></td>
+  <td>Return stack top</td>
+</tr>
+<tr>
+  <td><code>DSP_INIT</code></td>
+  <td><code>$7E00</code></td>
+  <td><code>$DE00</code></td>
+  <td>Data stack top</td>
+</tr>
+</tbody>
+</table>
+<p>Example — build a 16K-target ROM kernel:</p>
+<pre><code class="language-sh">cd kernel
+lwasm --format=decb --output=build/kernel-16k.bin --map=build/kernel-16k.map \
+      -DRSP_INIT=$4000 -DDSP_INIT=$3E00 \
+      kernel.asm
+</code></pre>
+<p>Then point your demo at it via <code>KERNEL_STEM = kernel-16k</code>.</p>
+<hr />
+<h2>Forth-side build constants</h2>
+<p><code>fc.py</code> injects these as Forth literals in every compile. <strong>Use them
+instead of hardcoded addresses</strong> — your source then builds against either
+profile without changes.</p>
+<table>
+<thead>
+<tr>
+  <th>Forth name</th>
+  <th>What it is</th>
+  <th>ROM mode</th>
+  <th>all-RAM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>app-base</code></td>
+  <td>Where this app's code starts</td>
+  <td><code>$3000</code></td>
+  <td><code>$2000</code></td>
+</tr>
+<tr>
+  <td><code>vram-base</code></td>
+  <td>RG6 VRAM base (kernel-reserved)</td>
+  <td><code>$0600</code></td>
+  <td><code>$0600</code></td>
+</tr>
+<tr>
+  <td><code>font-base</code></td>
+  <td>Where <code>init-font</code> writes glyphs</td>
+  <td><code>$5800</code></td>
+  <td><code>$9000</code></td>
+</tr>
+<tr>
+  <td><code>trig-base</code></td>
+  <td>Where <code>init-sin</code> writes the sine table</td>
+  <td><code>$7800</code></td>
+  <td><code>$86CC</code></td>
+</tr>
+</tbody>
+</table>
+<p>Example — using them:</p>
+<pre><code class="language-forth">INCLUDE ../../lib/rg-pixel.fs
+
+: my-init
+  rg-init                         \ uses vram-base internally
+  init-font                       \ writes font-base
+  font-base 472 0 FILL            \ explicit reference to font-base
+  ;
+</code></pre>
+<p>The same source builds and runs in both profiles. The numbers shift; the
+program doesn't.</p>
+<hr />
+<h2>Common scenarios</h2>
+<h3>&quot;I want a small SG4 (text) app on 32K&quot;</h3>
+<p>Just <code>NAME = foo</code>. ROM mode is the default. Done.</p>
+<h3>&quot;I want RG6 graphics&quot;</h3>
+<p>Add <code>INCLUDE ../../lib/rg-pixel.fs</code>. Call <code>rg-init</code>. The kernel
+reserves <code>$0600–$1DFF</code> for VRAM in both modes; <code>rg-init</code> configures the
+VDG to display from <code>vram-base</code>. Set <code>XROAR_EXTRA = -tv-input cmp-br</code> for
+NTSC artifact colour.</p>
+<h3>&quot;I want to call BASIC ROM routines (DSKCON, RTC, etc.)&quot;</h3>
+<p>ROM mode (default) keeps <code>$A000–$DFFF</code> mapped. Direct <code>JSR</code> works:</p>
+<pre><code class="language-forth">CODE call-dskcon
+        JSR     $D75F
+        ;NEXT
+;CODE
+</code></pre>
+<h3>&quot;I need a clean exit to BASIC&quot;</h3>
+<p>ROM mode + <code>INCLUDE ../../lib/bye.fs</code> + call <code>exit-basic</code> — JMPs to
+BASIC's cold start at <code>$A027</code>. Doesn't work in all-RAM mode (ROMs paged out).</p>
+<h3>&quot;My app code is over ~10K&quot;</h3>
+<p>Switch to all-RAM:</p>
+<pre><code class="language-make">NAME           = bigapp
+KERNEL_VARIANT = allram
+</code></pre>
+<p>You now get 24K contiguous code space at <code>$2000–$8FFF</code>, but lose the BASIC
+ROM and the clean BREAK exit.</p>
+<h3>&quot;I need a fixed-address buffer in the middle of my app&quot;</h3>
+<p>Use <code>--hole</code>. Add to your Makefile:</p>
+<pre><code class="language-make">$(BIN): $(SRC) $(EXTRA_DEPS) $(KERNEL_MAP) $(KERNEL_BIN)
+	mkdir -p build
+	$(FC) $(SRC) \
+	    --kernel    $(KERNEL_MAP) \
+	    --kernel-bin $(KERNEL_BIN) \
+	    --hole      0x5000,1536 \
+	    --output    $(BIN)
+</code></pre>
+<p>fc.py emits app records that skip <code>$5000–$55FF</code>; you can write a
+<code>$5000 CONSTANT MYBUF</code> and use that 1536-byte area without growing the
+binary.</p>
+<h3>&quot;FujiNet calls hang or crash&quot;</h3>
+<p>The DriveWire vectors at <code>$D93F</code>/<code>$D941</code> only exist when the HDB-DOS-CC
+cart ROM is loaded. Add to the demo Makefile:</p>
+<pre><code class="language-make">XROAR_EXTRA = -cart-rom ~/.xroar/roms/hdbdw3cc2.rom -kbd-translate
+</code></pre>
+<p>And test with a real FujiNet or <code>xroar -becker</code> for the DriveWire endpoint.</p>
+<h3>&quot;I'm targeting a 16K CoCo&quot;</h3>
+<p>Rebuild the kernel with reduced stack defaults (see Level 3 above). Stick
+to SG4 modes — RG6 doesn't fit (kernel + 6K VRAM = no app room).</p>
+<hr />
+<h2>Edge cases</h2>
+<ul>
+<li><p><strong>fujinet.fs SAM toggling</strong> — <code>dw-write</code>/<code>dw-read</code> toggle SAM TY around
+the cart-ROM JSR for all-RAM kernels (where TY=1 hides the cart ROM).
+In ROM mode the toggle compiles out via <code>IFEQ KERNEL_ORG-$E000</code>, since
+the cart is always visible. No app-side change needed.</p>
+</li>
+<li><p><strong><code>CONSTANT</code> requires a literal</strong> — fc.py's <code>CONSTANT</code> parser needs a
+numeric literal, not another constant. So <code>vram-base CONSTANT GVRAM</code>
+fails; use <code>vram-base</code> directly instead, or hardcode <code>$0600 CONSTANT GVRAM</code> if you really want a per-app symbol.</p>
+</li>
+<li><p><strong><code>EXIT</code> inside <code>IF</code></strong> — known fc.py compilation quirk. The
+<code>IF ... EXIT THEN</code> pattern can mis-emit branch offsets in some cases.
+Restructure as <code>IF ... THEN</code> with the body inside the <code>IF</code>, or
+<code>IF ... ELSE THEN</code>.</p>
+</li>
+<li><p><strong>High-RAM data in ROM mode</strong> — addresses <code>$8000–$DFFF</code> are BASIC
+ROM in ROM mode (writes silently dropped). Anything you previously had
+at <code>$8000</code>/<code>$9000</code>/<code>$A000</code> needs relocation. Use <code>font-base</code> /
+<code>trig-base</code> for those tables, or pick a free spot in the heap area
+(<code>$5A00–$7DFF</code> on 32K).</p>
+</li>
+</ul>
+<hr />
+<h2>See also</h2>
+<ul>
+<li><a href="kernel/README.md"><code>kernel/README.md</code></a> — full memory maps, primitive
+reference, boot sequence</li>
+<li><a href="tools/README.md"><code>tools/README.md</code></a> — fc.py compilation pipeline, ITC
+threading, inline <code>CODE</code> word syntax</li>
+<li><a href="../make/demo.mk"><code>../make/demo.mk</code></a> — the shared Makefile (canonical
+source for variable defaults)</li>
+</ul>
+
+    </article>
+  </div>
+  <footer class="doc-footer">
+    Generated from source by <code>build-site.py</code>. Do not hand-edit.
+  </footer>
+</body>
+</html>

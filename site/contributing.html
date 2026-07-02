@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/docs.css">
+  <title>Contributing to CoCo Renovation — CoCo Renovation</title>
+</head>
+<body>
+  <header class="doc-header">
+    <span class="doc-brand">CoCo Renovation</span>
+    <span class="doc-brand-sub">Bare Naked Forth</span>
+  </header>
+  <div class="doc-layout">
+    <nav class="doc-sidebar">
+      <h2>About</h2>
+      <a href="coco-renovation.html">The Vision</a>
+      <a href="roadmap.html">Roadmap</a>
+      <h2>Guides</h2>
+      <a href="project-setup.html">Project Setup</a>
+      <a href="contributing.html" class="current">Contributing</a>
+      <h2>Reference</h2>
+      <a href="resources.html">Resources</a>
+      <a href="ans-forth-comparison.html">ANS-Forth Comparison</a>
+    </nav>
+    <article class="doc-article">
+<h1>Contributing to CoCo Renovation</h1>
+<p>This describes how anyone — human or AI assistant — contributes to this
+project. Read it before starting work. The same instructions apply whoever you
+are; there is no separate track for automated contributors.</p>
+<h2>Getting oriented</h2>
+<p>New here? Read the README and roadmap, skim the open issues, then pick up the
+next thing. If you can't orient from the project's own docs, that's a
+documentation gap worth surfacing — not a reason to invent context.</p>
+<h2>Source of truth</h2>
+<p>This project's own documentation is canonical. For any question within the
+project's scope, the in-repo docs are the authority — consult them before
+searching the web. Don't keep project knowledge in private notes or assistant
+memory files; if a fact matters, it belongs in the human-readable docs, kept
+accurate. When docs are stale or wrong, fix the docs (or file an issue) rather
+than routing around them.</p>
+<h2>Before you start: file an issue</h2>
+<p>Work is tracked in <code>issues.jsonl</code> at the repo root.</p>
+<ul>
+<li>No substantive work without a matching issue. If none exists, propose one.</li>
+<li>Get the issue reviewed before starting — fairly documented, fairly considered.</li>
+<li>Record deferred alternatives with a revisit trigger (&quot;try this if X&quot;), and
+record rejected or forbidden paths with their rationale, so settled decisions
+aren't quietly relitigated.</li>
+</ul>
+<h2>Doing the work</h2>
+<ul>
+<li><strong>Don't invent — ask or verify.</strong> Check any claim against the source first
+(grep the repo); when something can't be verified, ask rather than assert.</li>
+<li><strong>Build conservatively.</strong> Write the minimum that satisfies the issue; make
+surgical changes that match existing style. Don't scaffold, restyle, or
+redesign unasked, and don't apply codebase reflexes to a repo that isn't one.</li>
+<li><strong>Stay in bounds.</strong> Work within this project's tree; if a change seems to need
+something outside it, ask first.</li>
+</ul>
+<h2>For automated / AI contributors</h2>
+<ul>
+<li><strong>Bounded autonomy.</strong> Proceed on your own through mechanical steps; stop for
+genuine decisions, visual or physical verification, and hard-to-reverse actions.</li>
+<li><strong>Be careful with side effects.</strong> For repeated, expensive, or outward-facing
+actions (launching apps, hitting external services), act once, observe, then
+iterate — never fire them in a loop.</li>
+</ul>
+<h2>Finishing</h2>
+<ul>
+<li>An issue isn't <code>done</code> until the change is tested and confirmed by a maintainer.</li>
+<li>Resolve related issues before pushing.</li>
+<li>Favor in-repo, diffable, vendor-neutral artifacts so the project stays
+comprehensible and reviewable no matter who contributed.</li>
+</ul>
+
+    </article>
+  </div>
+  <footer class="doc-footer">
+    Generated from source by <code>build-site.py</code>. Do not hand-edit.
+  </footer>
+</body>
+</html>

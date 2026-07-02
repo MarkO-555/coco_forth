@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "Declarative manifest for the documentation site (#543, formalised in #545).",
+    "Each page is one entry under a section; the section titles become the",
+    "sidebar-nav groups. Adding a doc = add one line.",
+    "",
+    "Fields per page:",
+    "  source  (required) repo-relative path to the source file",
+    "  nav     (required) short label shown in the sidebar",
+    "  output  (optional) site-relative output filename; derived from source if omitted",
+    "  kind    (optional) 'generate' (markdown -> HTML, default). 'copy' arrives in #544.",
+    "",
+    "The page <title> comes from the source's first H1, not from here."
+  ],
+  "sections": [
+    {
+      "title": "About",
+      "pages": [
+        { "source": "COCO_RENOVATION.md", "nav": "The Vision" },
+        { "source": "ROADMAP.md",         "nav": "Roadmap" }
+      ]
+    },
+    {
+      "title": "Guides",
+      "pages": [
+        { "source": "PROJECT_SETUP.md", "nav": "Project Setup" },
+        { "source": "CONTRIBUTING.md",  "nav": "Contributing" }
+      ]
+    },
+    {
+      "title": "Reference",
+      "pages": [
+        { "source": "RESOURCES.md",             "nav": "Resources" },
+        { "source": "ANS-FORTH-COMPARISON.md",  "nav": "ANS-Forth Comparison" }
+      ]
+    }
+  ]
+}

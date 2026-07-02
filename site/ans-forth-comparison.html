@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/docs.css">
+  <title>ANS-Forth (Sean Conner, 2025) vs Bare Naked Forth — CoCo Renovation</title>
+</head>
+<body>
+  <header class="doc-header">
+    <span class="doc-brand">CoCo Renovation</span>
+    <span class="doc-brand-sub">Bare Naked Forth</span>
+  </header>
+  <div class="doc-layout">
+    <nav class="doc-sidebar">
+      <h2>About</h2>
+      <a href="coco-renovation.html">The Vision</a>
+      <a href="roadmap.html">Roadmap</a>
+      <h2>Guides</h2>
+      <a href="project-setup.html">Project Setup</a>
+      <a href="contributing.html">Contributing</a>
+      <h2>Reference</h2>
+      <a href="resources.html">Resources</a>
+      <a href="ans-forth-comparison.html" class="current">ANS-Forth Comparison</a>
+    </nav>
+    <article class="doc-article">
+<h1>ANS-Forth (Sean Conner, 2025) vs Bare Naked Forth</h1>
+<p>A side-by-side comparison of two ITC Forth implementations for the 6809.</p>
+<p>ANS-Forth source: <code>~/github/ANS-Forth</code> (<code>forth.asm</code>, GPL3+).</p>
+<h2>Identity &amp; Scope</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Form</td>
+  <td>Single 11.5K-line <code>forth.asm</code>, GPL3+</td>
+  <td>Kernel + Python cross-compiler + .fs library</td>
+</tr>
+<tr>
+  <td>Target</td>
+  <td>Generic 6809 (host wires 3 vectors: getchar/putchar/bye)</td>
+  <td>TRS-80 CoCo specifically</td>
+</tr>
+<tr>
+  <td>Spec</td>
+  <td>ANS Forth 2012 (formally documented per spec)</td>
+  <td>Bespoke dialect, no compliance claim</td>
+</tr>
+<tr>
+  <td>Assembler</td>
+  <td><code>a09</code> (Sean's own)</td>
+  <td><code>lwasm</code></td>
+</tr>
+<tr>
+  <td>Distribution</td>
+  <td>One binary, runs from ROM</td>
+  <td><code>make</code> (ROM mode) / <code>make allram</code> → DECB binary, eventual cart ROM</td>
+</tr>
+</tbody>
+</table>
+<h2>Architecture (both ITC)</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>IP register</td>
+  <td><strong>Y</strong></td>
+  <td><strong>X</strong></td>
+</tr>
+<tr>
+  <td>Data stack</td>
+  <td><strong>U</strong></td>
+  <td><strong>U</strong></td>
+</tr>
+<tr>
+  <td>Return stack</td>
+  <td><strong>S</strong></td>
+  <td><strong>S</strong></td>
+</tr>
+<tr>
+  <td>xt / scratch</td>
+  <td>X (xt), D</td>
+  <td>Y (scratch), D</td>
+</tr>
+<tr>
+  <td>NEXT</td>
+  <td>Inlined per primitive (<code>ldx ,y++ ; jmp [,x]</code>)</td>
+  <td>Shared NEXT routine</td>
+</tr>
+<tr>
+  <td>DOCOL</td>
+  <td><code>pshs y ; leay 2,x ; ldx ,y++ ; jmp [,x]</code></td>
+  <td>Standard DOCOL pushing IP</td>
+</tr>
+<tr>
+  <td>Dictionary on target</td>
+  <td>Yes — full headers (link / 16-bit length+flags / name / xt / body)</td>
+  <td><strong>None</strong> — names stripped by cross-compiler</td>
+</tr>
+</tbody>
+</table>
+<h2>Word counts / Wordsets</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Built-in words</td>
+  <td>272 (in target dictionary)</td>
+  <td>81 primitives + 3 inline data words; rest in <code>lib/*.fs</code></td>
+</tr>
+<tr>
+  <td>Name flags</td>
+  <td>IMMEDIATE, HIDDEN, NOINTERP, DOUBLE-TO, LOCAL-TO</td>
+  <td>(Cross-compile time only)</td>
+</tr>
+<tr>
+  <td>ANS sets</td>
+  <td>CORE/-EXT, DOUBLE/-EXT, EXCEPTION/-EXT, LOCAL/-EXT, TOOLS (most -EXT), SEARCH/-EXT, STRING/-EXT</td>
+  <td>None formally; CORE-ish primitives only</td>
+</tr>
+<tr>
+  <td>Notable absent</td>
+  <td>BLOCK, FACILITY, FILE, FLOATING, MEMORY, XCHAR</td>
+  <td>EXCEPTION, LOCALS, SEARCH-ORDER, DOES&gt;, pictured numeric I/O, BEGIN/WHILE/REPEAT</td>
+</tr>
+</tbody>
+</table>
+<h2>Interactive Surface</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>On-device interpreter</td>
+  <td><strong>Yes</strong> — full text reader, parser, <code>: … ;</code>, <code>CREATE … DOES&gt;</code>, <code>EVALUATE</code>, <code>SEE</code></td>
+  <td><strong>No</strong> — write <code>.fs</code> on host, cross-compile, transfer</td>
+</tr>
+<tr>
+  <td>Number prefixes</td>
+  <td><code>#dec</code>, <code>$hex</code>, <code>%bin</code>, <code>'c'</code></td>
+  <td>Compile-time: <code>$hex</code>, <code>%bin</code>, <code>#literal</code> (fc.py)</td>
+</tr>
+<tr>
+  <td>Compile-time data</td>
+  <td>n/a</td>
+  <td><code>DATA[PY name &lt;python&gt; ]DATA</code> (Python embedded in .fs)</td>
+</tr>
+<tr>
+  <td>Inline assembly</td>
+  <td>Hand-coded primitives only</td>
+  <td><code>CODE</code> / <code>KCODE</code> blocks inside .fs</td>
+</tr>
+<tr>
+  <td>Struct definers</td>
+  <td>n/a</td>
+  <td><code>+FIELD</code>, <code>CFIELD:</code>, <code>FIELD:</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Platform Integration</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Hardware-specific words</td>
+  <td>None — pure CPU + I/O vectors</td>
+  <td>VDG/SG, keyboard matrix, IRQ/VSYNC, SAM register, FujiNet, sound DAC, sprite/beam libs</td>
+</tr>
+<tr>
+  <td>Memory profiles</td>
+  <td>One; placeable in ROM</td>
+  <td>Two: ROM mode ($2000) and all-RAM ($1000-staged → $E000 final)</td>
+</tr>
+<tr>
+  <td>Tutorial / demos</td>
+  <td>None</td>
+  <td>13-chapter tutorial, ~10 demos (Tetris, Kaleidoscope, Rain, etc.)</td>
+</tr>
+<tr>
+  <td>Build framework</td>
+  <td><code>GNUmakefile</code> (one rule)</td>
+  <td><code>make</code>, <code>make allram</code>, <code>make dsk</code> (decb), XRoar auto-launch, <code>fc.py --cycles</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Engineering Process</h2>
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>ANS-Forth</th>
+  <th>Bare Naked Forth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Built-in tests</td>
+  <td><code>.test</code>/<code>.endtst</code> blocks throughout source, asserts vs. registers/memory</td>
+  <td>None in-asm; relies on demo-running + manual XRoar verification</td>
+</tr>
+<tr>
+  <td>Standards documentation</td>
+  <td>Full Implementation-Defined / Ambiguous-Conditions tables in README</td>
+  <td><code>reference.html</code>, tutorial HTML, <code>kernel/README.md</code></td>
+</tr>
+<tr>
+  <td>Issue tracking</td>
+  <td>Implicit</td>
+  <td><code>issues.jsonl</code> workflow</td>
+</tr>
+</tbody>
+</table>
+<h2>One-line Take</h2>
+<p><strong>ANS-Forth</strong> is a <em>standards-compliant, self-hosted, hardware-agnostic</em> 6809
+Forth — drop-in three vectors and you have an interactive ANS 2012 system. Big,
+complete, conservative.</p>
+<p><strong>Bare Naked Forth</strong> (the Forth that powers CoCo Renovation) is a
+<em>cross-compiled, hardware-rich, custom</em> Forth —
+smaller kernel, no on-device interpreter, but the toolchain (Python escape
+hatches, KCODE blocks, struct definers, <code>DATA[PY]</code>, cycle measurement) and the
+CoCo-native libraries (VDG, sprites, sound, FujiNet) are the value
+proposition. It's a development environment, not a Forth system.</p>
+<h2>Things Worth Borrowing from ANS-Forth</h2>
+<p>If we ever go on-device:</p>
+<ul>
+<li><strong>Inline-NEXT pattern</strong> — <code>ldx ,y++ ; jmp [,x]</code> at the tail of each primitive
+saves the shared-NEXT JMP cost (4–5 cycles per dispatch) at a cost of ~3
+bytes per primitive. On a kernel with ~80 primitives, the trade is real and
+measurable.</li>
+<li><strong>Dictionary header layout</strong> — link / 16-bit length+flags / name / xt /
+body. The flag bits (IMMEDIATE / HIDDEN / NOINTERP / DOUBLE-TO / LOCAL-TO)
+are a clean, compact design.</li>
+<li><strong><code>.test</code>/<code>.endtst</code> in-source assertion pattern</strong> — embed unit tests next to
+the primitive being tested, with asserts against registers/memory after
+invocation. Drops into kernel.asm cleanly if a09's test directives are
+ported (or replaced with lwasm equivalents).</li>
+<li><strong>SEE / EVALUATE design</strong> — for an eventual on-device REPL milestone.</li>
+</ul>
+
+    </article>
+  </div>
+  <footer class="doc-footer">
+    Generated from source by <code>build-site.py</code>. Do not hand-edit.
+  </footer>
+</body>
+</html>
