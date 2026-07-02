@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Gallery — Getting Started with Bare Naked Forth</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* Page-local: demo gallery cards */
+    .demo {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      align-items: start;
+      margin: 2em 0;
+      padding-bottom: 2em;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .demo:last-child { border-bottom: none; }
+    .demo-shot {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid #ccc;
+    }
+    .demo-noshot {
+      width: 100%;
+      aspect-ratio: 5 / 4;
+      border: 2px dashed #c4c0b8;
+      background: #f7f5f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 16px;
+      color: #a89f8c;
+      font-style: italic;
+      font-size: 0.82em;
+      line-height: 1.5;
+    }
+    .demo-body h3 {
+      margin-top: 0;
+      font-size: 1.15em;
+    }
+    .demo-what { margin-bottom: 0.7em; }
+    .demo-meta {
+      font-size: 0.86em;
+      line-height: 1.55;
+      margin-bottom: 0.4em;
+      color: #333;
+    }
+    .demo-meta strong {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.9em;
+      color: var(--green-dark);
+    }
+    .demo-src {
+      font-size: 0.85em;
+      margin-top: 0.7em;
+    }
+    .demo-src a { color: var(--green-dark); font-weight: bold; text-decoration: none; }
+    .demo-src a:hover { text-decoration: underline; }
+    .section-head {
+      margin-top: 2.4em;
+      padding-bottom: 6px;
+      border-bottom: 3px solid var(--green-solid);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 1em;
+      color: var(--green-dark);
+    }
+    @media (max-width: 640px) {
+      .demo { grid-template-columns: 1fr; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Opener -->
+    <div class="chapter-opener">
+      <div class="chapter-label">APPENDIX</div>
+      <div class="chapter-title">Demo Gallery</div>
+      <div class="chapter-subtitle">Fifteen complete programs, and what each one teaches</div>
+      <div class="chapter-green-bar"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="page-header">
+      <span>DEMO GALLERY</span>
+      <span>1</span>
+    </div>
+    <div class="content clearfix">
+
+      <p>
+        The tutorial builds up to a guessing game; the demos go the rest of
+        the way. Each is a self-contained Forth program in
+        <code>src/</code>, built with the same <code>fc.py</code>
+        toolchain, and each was written to exercise a particular corner of
+        the CoCo — beam-racing, artifact colour, semigraphics, the two
+        audio paths, the FujiNet clock. Every one ships on
+        <code>build/demos.dsk</code> (see the
+        <a href="../dsk-workflow/index.html">disk build guide</a>) and
+        runs on real hardware.
+      </p>
+
+      <p>
+        The screenshots are captured from XRoar. Click any
+        <em>source&nbsp;&amp;&nbsp;README</em> link to read the code.
+      </p>
+
+      <!-- ── Start Here ─────────────────────────────────────────────── -->
+      <h2 class="section-head">Start Here</h2>
+
+      <div class="demo" id="hello">
+        <img class="demo-shot" src="images/hello.png" alt="XRoar showing 'BARE NAKED FORTH 1.2' on a green VDG text screen">
+        <div class="demo-body">
+          <h3>Hello World</h3>
+          <p class="demo-what">The minimal kernel smoke-test. Prints
+            <code>BARE NAKED FORTH</code> followed by the kernel version to
+            the VDG text screen with <code>EMIT</code>, then waits for the
+            BREAK key to return cleanly to BASIC.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> kernel primitives
+            (<code>EMIT</code>, <code>CHAR</code>, <code>RSHIFT</code>),
+            ASCII-to-VDG text output, colon definitions,
+            <code>BEGIN</code>/<code>UNTIL</code> polling, clean exit via
+            <code>lib/bye.fs</code>.</p>
+          <p class="demo-src"><a href="../../src/hello/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <!-- ── Games & Graphics ───────────────────────────────────────── -->
+      <h2 class="section-head">Games &amp; Graphics</h2>
+
+      <div class="demo" id="tetris">
+        <img class="demo-shot" src="images/tetris.png" alt="Bare Naked Tetris — a partly-filled SG4 playfield with a score/lines/high-scores panel">
+        <div class="demo-body">
+          <h3>Bare Naked Tetris</h3>
+          <p class="demo-what">A full Tetris game in ~555 lines of Forth on a
+            32&times;16 SG4 display: a 10-wide playfield plus an info panel
+            with score, lines, next-piece preview, and high scores. Includes
+            collision detection, cascade line-clearing, scoring, difficulty
+            progression, delayed auto-shift key repeat, and hard/soft drop.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> VDG SG4 colour
+            cells, packed 112-byte rotation table, cascade line-clear,
+            vsync-seeded LCG RNG (<code>lib/rng.fs</code>), number printing
+            (<code>lib/print.fs</code>), compile-time data
+            (<code>lib/datawrite.fs</code>).</p>
+          <p class="demo-meta"><strong>Technique:</strong> zero-flicker
+            rendering draws the piece at its new position <em>before</em>
+            erasing the old cells (skipping reused cells), so the piece is
+            never absent for even one frame — the headline technique in the
+            codebase.</p>
+          <p class="demo-src"><a href="../../src/tetris/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="bounce">
+        <img class="demo-shot" src="images/bounce.png" alt="Four white artifact-colour balls bouncing on a black RG6 screen with a small HUD">
+        <div class="demo-body">
+          <h3>Bounce — HSYNC Sprite Testbed</h3>
+          <p class="demo-what">Four 7&times;7 artifact-colour balls bounce
+            around a 128&times;192 RG6 screen while you switch between three
+            rendering modes — free-running, VSYNC-only, and VSYNC+HSYNC
+            beam-chasing — to see the difference in tearing. A HUD shows the
+            current blanking offset and mode, adjustable with the arrow
+            keys.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> RG6 artifact-colour
+            pixels (<code>lib/rg-pixel.fs</code>), software sprites
+            (<code>lib/sprite.fs</code>), PIA0 HSYNC beam-chasing, VSYNC sync
+            (<code>lib/screen.fs</code>), 5&times;7 HUD font.</p>
+          <p class="demo-meta"><strong>Technique:</strong> draws 2 of 4 balls
+            per frame to stay under the 16.7&nbsp;ms budget, and waits ~70
+            HSYNC lines past VSYNC so VRAM writes trail the beam — killing
+            most visible flicker.</p>
+          <p class="demo-src"><a href="../../src/bounce/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="kaleidoscope">
+        <img class="demo-shot" src="images/kaleidoscope.png" alt="Four-way symmetric coloured pixel pattern on an SG4 grid">
+        <div class="demo-body">
+          <h3>Kaleidoscope</h3>
+          <p class="demo-what">A four-way symmetric pattern generator on a
+            64&times;32 SG4 pixel grid. Each step picks a random position and
+            plots it mirrored across both axes, using all eight CoCo colours
+            with a 75% plot / 25% erase ratio so patterns build up and slowly
+            recycle.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> VDG SG4
+            semigraphics, 16-bit LCG RNG (<code>lib/rng.fs</code>), SAM
+            double-speed toggle, vsync sync (<code>lib/screen.fs</code>).</p>
+          <p class="demo-meta"><strong>Technique:</strong> computation runs at
+            ~1.78&nbsp;MHz via the SAM speed bit, dropping back to normal
+            speed before vsync for a clean VDG refresh.</p>
+          <p class="demo-src"><a href="../../src/kaleidoscope/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="rain">
+        <img class="demo-shot" src="images/rain.png" alt="Matrix-style falling green characters on a black VDG text screen">
+        <div class="demo-body">
+          <h3>Matrix Rain</h3>
+          <p class="demo-what">A Matrix-style digital rain: 32 independent
+            character streams fall at varying speeds down the VDG text
+            screen. Each stream has a bright inverse-video head, a dimmer
+            trail of randomly mutating characters, and a black erasing
+            tail.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> VDG text mode's
+            three brightness tiers (inverse / normal / SG4-black), four
+            parallel column-state arrays, LCG RNG (<code>lib/rng.fs</code>),
+            SAM double-speed.</p>
+          <p class="demo-meta"><strong>Technique:</strong> per-frame column
+            updates, mutation, and spawn logic run at SAM double speed,
+            dropping to normal speed before vsync — the same trick as the
+            kaleidoscope.</p>
+          <p class="demo-src"><a href="../../src/rain/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <!-- ── Text & Interaction ─────────────────────────────────────── -->
+      <h2 class="section-head">Text &amp; Interaction</h2>
+
+      <div class="demo" id="typewriter">
+        <img class="demo-shot" src="images/typewriter.png" alt="Typed text with a block cursor on a green VDG text screen">
+        <div class="demo-body">
+          <h3>Typewriter</h3>
+          <p class="demo-what">A bare-metal keyboard echo test that types
+            characters to the VDG screen with a visible block cursor and full
+            cursor movement — no BASIC ROM dependency. Handles printable
+            echo, ENTER, CLEAR, backspace, arrow-key movement, and BREAK to
+            exit; a bundled <code>kbdtest.fs</code> also shows each key's hex
+            code.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> kernel keyboard
+            scan (<code>KEY</code> via direct PIA0 matrix with debounce +
+            SHIFT), <code>EMIT</code> with ASCII-to-VDG encoding and
+            scrolling, <code>AT</code> positioning, direct video-RAM
+            <code>C@</code>/<code>C!</code> for the cursor.</p>
+          <p class="demo-src"><a href="../../src/typewriter/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="calculator">
+        <img class="demo-shot" src="images/calculator.png" alt="Calculator with a red pixel-font display and an on-screen keypad">
+        <div class="demo-body">
+          <h3>Calculator</h3>
+          <p class="demo-what">An infix integer calculator with an on-screen
+            keypad. A red pixel-font display shows the running value while
+            single-character inverse-video button labels flash on keypress.
+            Supports the four operators, chained operations, clear, and a
+            memory store/recall.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> VDG SG4 pixel-font
+            digits, direct video-RAM writes, inverse/normal video for the
+            button flash, keyboard input via <code>KEY</code>, 16-bit signed
+            arithmetic, number printing (<code>lib/print.fs</code>).</p>
+          <p class="demo-src"><a href="../../src/calculator/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <!-- ── Display & Colour ───────────────────────────────────────── -->
+      <h2 class="section-head">Display &amp; Colour</h2>
+
+      <div class="demo" id="vdg-modes">
+        <img class="demo-shot" src="images/vdg-modes.png" alt="A VDG display mode with a representative colour/pattern test image">
+        <div class="demo-body">
+          <h3>VDG Mode Tour</h3>
+          <p class="demo-what">Cycles through all eleven MC6847 display modes
+            (Alpha, SG4, SG6, CG1&ndash;6, RG1&ndash;6), showing each mode's
+            name plus a representative pattern — colour bars, bands, or
+            checkerboards — rendered with whatever technique that mode
+            supports. Press any key to advance.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> full VDG/SAM mode
+            switching via a mode table (<code>lib/vdg.fs</code>), four
+            text-rendering strategies (VDG character ROM, RG bitmap font,
+            nibble-expanded CG font, SG6 block-pixel font), compile-time data
+            (<code>lib/datawrite.fs</code>).</p>
+          <p class="demo-meta"><strong>Technique:</strong> programs SAM
+            V0&ndash;V2 (data rate) and F0&ndash;F6 (VRAM offset) plus the PIA
+            <code>$FF22</code> mode pins while preserving bits 0&ndash;2,
+            correctly handling SG6's ROM-disable.</p>
+          <p class="demo-src"><a href="../../src/vdg-modes/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="rg-test">
+        <img class="demo-shot" src="images/rg-test.png" alt="RG6 screen showing a blue and an orange artifact-colour horizontal bar">
+        <div class="demo-body">
+          <h3>RG6 Pixel &amp; Sprite Test</h3>
+          <p class="demo-what">A stepped test harness for the RG6
+            artifact-colour pixel, line, and sprite libraries. Advancing with
+            a keypress, it draws colour bars (shown), a fan of colored lines
+            (white/blue/red by slope), sprite draw/erase, and a rotating
+            trig-driven line sweep, all on a 128&times;192 RG6 screen under
+            NTSC artifacting.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> RG6 artifact-colour
+            pixels and <code>rg-line</code> (<code>lib/rg-pixel.fs</code>),
+            software sprites with inline data (<code>lib/sprite.fs</code>),
+            sin table (<code>lib/trig.fs</code>), keypress stepping with BREAK
+            early-exit.</p>
+          <p class="demo-src"><a href="../../src/rg-test/">source →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="colored-text">
+        <img class="demo-shot" src="images/colored-text.png" alt="The same text row printed in white, blue, and red RG6 artifact colour">
+        <div class="demo-body">
+          <h3>Colored RG6 Text</h3>
+          <p class="demo-what">A diagnostic swatch for the copy-mask
+            colored-text feature. Prints the same line of RG6 artifact text
+            three times, once per colour mask
+            (<code>$FF</code>/<code>$55</code>/<code>$AA</code>), so the
+            mask-to-colour mapping (white/blue/red) can be eyeballed. The
+            <code>$FF</code> row doubles as a white-output regression
+            check.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> RG6 colored
+            artifact text via the <code>KVAR-RGCOLMASK</code> copy-mask
+            (<code>lib/rg-text.fs</code>, kernel <code>rg-char</code>), font
+            art (<code>lib/font-art.fs</code>), VDG/PIA setup.</p>
+          <p class="demo-meta"><strong>Technique:</strong> recolouring ANDs
+            each font byte with the colour mask during the glyph copy — no
+            separate colored fonts and zero extra RAM.</p>
+          <p class="demo-src"><a href="../../src/colored-text/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <!-- ── Time ───────────────────────────────────────────────────── -->
+      <h2 class="section-head">Telling Time</h2>
+
+      <div class="demo" id="clock">
+        <img class="demo-shot" src="images/clock.png" alt="Future-retro analog clock with an oval artifact-colour face and a digital readout">
+        <div class="demo-body">
+          <h3>Analog + Digital Clock</h3>
+          <p class="demo-what">A future-retro wall clock that fetches the time
+            from a FujiNet RTC, then smoothly sweeps three hands across an
+            oval artifact-colour face drawn from 24 line segments, with
+            quarter ticks and pip markers. A digital
+            <code>YYYY.MM.DD&nbsp;/&nbsp;HH:MM:SS</code> readout sits below,
+            and an "RTC SYNC" flash fires on the once-per-minute
+            re-sync.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> RG6 line/pixel
+            drawing (<code>lib/rg-pixel.fs</code>), double-buffered
+            beam-trace/draw/restore pipeline (<code>lib/beam.fs</code>),
+            FujiNet RTC (<code>lib/fujinet.fs</code>), sin table
+            (<code>lib/trig.fs</code>), 12 hand-written <code>CODE</code>
+            words.</p>
+          <p class="demo-meta"><strong>Technique:</strong> five optimisation
+            rounds brought a typical mid-minute frame to 22% of the
+            ~14,917-cycle NTSC field budget; every visible frame fits in one
+            vblank.</p>
+          <p class="demo-src"><a href="../../src/clock/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="fujinet-time">
+        <div class="demo-noshot">Live screenshot needs a FujiNet
+          device (the emulator has no RTC to answer). See the
+          <a href="#clock">clock</a> demo for the same time path on screen.</div>
+        <div class="demo-body">
+          <h3>FujiNet Time</h3>
+          <p class="demo-what">Fetches a 6-byte date/time block from the
+            FujiNet device over the cartridge's bit-banger DriveWire driver,
+            then formats and prints it as
+            <code>YYYY.MM.DD HH:MM:SS</code> on the VDG text screen. A
+            focused test of the FujiNet time path.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> FujiNet
+            <code>fn-time</code> over DriveWire bit-banger
+            (<code>lib/fujinet.fs</code>), an inline <code>CODE</code> word
+            with an <code>RMB</code> data buffer, VDG text output,
+            2-digit/4-digit decimal formatting.</p>
+          <p class="demo-meta"><strong>Note:</strong> requires a real (or
+            emulated) FujiNet as the time source — under plain XRoar it waits
+            on a device that never answers.</p>
+          <p class="demo-src"><a href="../../src/fujinet-time/">source →</a></p>
+        </div>
+      </div>
+
+      <!-- ── Sound ──────────────────────────────────────────────────── -->
+      <h2 class="section-head">Sound</h2>
+
+      <div class="demo" id="sound">
+        <img class="demo-shot" src="images/sound.png" alt="CoCo Sound Demo menu listing tone and effect keys on a green text screen">
+        <div class="demo-body">
+          <h3>DAC Sound</h3>
+          <p class="demo-what">An interactive tone-and-effect showcase for the
+            6-bit DAC at <code>$FF20</code> — the audio path BASIC's
+            <code>SOUND</code> uses, driven directly from Forth
+            <code>CODE</code> words. Keys trigger square/saw/triangle/sine
+            tones and named effects (beep, zap, boom, chirp, dock, hit) via a
+            <code>KEY</code> dispatch.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> 6-bit DAC output
+            (<code>$FF20</code>), explicit PIA0/PIA1 setup, sound primitives
+            <code>snd-tone</code>/<code>snd-saw</code>/<code>snd-sin</code>/<code>snd-noise</code>
+            (<code>lib/sound.fs</code>), sin table (<code>lib/trig.fs</code>),
+            <code>KEY</code> dispatch.</p>
+          <p class="demo-meta"><strong>Technique:</strong> because
+            <code>snd-tone</code> does its own PIA init, it runs identically
+            in ROM-mode and all-RAM kernels; the README documents measured
+            cycle costs (1&nbsp;ms&nbsp;&asymp;&nbsp;890 cycles) for every
+            effect.</p>
+          <p class="demo-src"><a href="../../src/sound/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="sound1bit">
+        <img class="demo-shot" src="images/sound1bit.png" alt="CoCo 1-Bit Sound Demo menu on a green text screen">
+        <div class="demo-body">
+          <h3>1-Bit Sound</h3>
+          <p class="demo-what">Exercises the CoCo's second audio path — the
+            single-bit output at <code>$FF22</code> bit 1, mixed into the same
+            bus as the DAC. Keys play square tones, an ascending sweep, a
+            click train, and a noise burst, plus an A/B key that plays the
+            same tone through the DAC then the 1-bit path for direct
+            comparison.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> 1-bit sound via
+            read-modify-write toggling of <code>$FF22</code> bit 1
+            (<code>snd-tone1</code>/<code>snd-click1</code>/<code>snd-noise1</code>),
+            PIA1 DDR setup, RNG-gated noise, shared DAC library
+            (<code>lib/sound.fs</code>).</p>
+          <p class="demo-meta"><strong>Technique:</strong> RMW toggling is
+            mandatory because <code>$FF22</code> also carries VDG mode bits
+            and RS-232 IN — a plain store would scramble the screen mode; the
+            1-bit path is fixed 50% duty, so square tones and clicks only.</p>
+          <p class="demo-src"><a href="../../src/sound1bit/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+      <div class="demo" id="sound-async">
+        <img class="demo-shot" src="images/sound-async.png" alt="Async Sound FX menu with an animation marker bar at the bottom">
+        <div class="demo-body">
+          <h3>Async Sound Engine</h3>
+          <p class="demo-what">A showcase of the non-blocking sound engine:
+            every effect is produced cooperatively one sample at a time, so an
+            on-screen marker keeps animating and the keyboard stays live while
+            sound plays. Keys trigger tones, sweeps, noise, ring-modulated
+            bell/gong timbres, and queued multi-note effects.</p>
+          <p class="demo-meta"><strong>Exercises:</strong> cooperative
+            HSYNC-polled DAC output (<code>lib/async-sound.fs</code>),
+            phase-accumulator wavetable voice (<code>lib/wavetable.fs</code>),
+            per-frame pitch slide / amplitude envelope / ring modulation, LFSR
+            white noise, a small note queue for sequencing.</p>
+          <p class="demo-meta"><strong>Technique:</strong> the engine polls
+            the HSYNC flag (<code>$FF01</code>) to clock the DAC instead of
+            taking an interrupt or busy-waiting — no kernel changes and no
+            blocking, so gameplay continues during playback (~1.1&nbsp;KB plus
+            one runtime-generated wavetable).</p>
+          <p class="demo-src"><a href="../../src/sound-async/">source &amp; README →</a></p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav">
+      <a href="../index.html">← Table of Contents</a>
+      <span class="spacer"></span>
+      <a href="../dsk-workflow/index.html">Disk Build &amp; Distribution →</a>
+    </div>
+
+  </div>
+</body>
+</html>
