@@ -1,0 +1,30 @@
+/* tokens.css -- shared design tokens for the CoCo Renovation site.
+ *
+ * Single source of truth for palette and type, imported site-wide (#542).
+ * Mirrors the tutorial book aesthetic in tutorials/style.css so generated
+ * pages and the hand-authored HTML feel like one publication. Change a
+ * value here and it propagates to every generated page.
+ */
+
+:root {
+  /* ---- Palette (mirrors tutorials/style.css) ---------------------------- */
+  --green:       #3c6e3c;
+  --green-light: #edf4ed;
+  --green-dark:  #2a4d2a;
+  --green-solid: #4a7d4a;
+  --text:        #1a1a1a;
+  --screen-bg:   #0d1f0d;
+  --screen-fg:   #6fcf6f;
+
+  /* ---- Surfaces --------------------------------------------------------- */
+  --page-bg:     #e8e4de;   /* outer canvas, matches the book */
+  --surface:     #ffffff;   /* the page sheet */
+  --code-bg:     #f4f6f4;   /* fenced code / pre background */
+  --border:      #d8d8d8;
+  --border-soft: #ececec;
+  --muted:       #555555;
+
+  /* ---- Type ------------------------------------------------------------- */
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-mono:  Menlo, Monaco, "SF Mono", Consolas, "Courier New", monospace;
+}

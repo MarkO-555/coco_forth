@@ -28,6 +28,7 @@ that replaces this hardcoded default arrives in #545.
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -46,6 +47,12 @@ except ImportError:  # pragma: no cover - guidance only
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SITE_DIR = REPO_ROOT / "site"
 
+# Hand-authored site source (template + assets). Kept OUT of site/ so a clean
+# rebuild of the generated output can never delete it; the build copies what
+# it needs into site/.
+TEMPLATE_DIR = REPO_ROOT / "tools" / "site-template"
+ASSETS_SRC = TEMPLATE_DIR / "assets"
+
 # Default page rendered when no source is given -- a proof that the pipeline
 # works end-to-end. Replaced by the declarative manifest in #545.
 DEFAULT_SOURCE = REPO_ROOT / "COCO_RENOVATION.md"
@@ -54,21 +61,29 @@ DEFAULT_SOURCE = REPO_ROOT / "COCO_RENOVATION.md"
 # Template
 # --------------------------------------------------------------------------
 #
-# Intentionally minimal for the skeleton. #542 introduces the real shared
-# template (header, sidebar nav, footer) and docs.css; keep this small so
-# that replacement is a clean swap rather than an unpick.
+# Shared page shell. Styling lives in the linked stylesheets (#542): tokens.css
+# holds palette/type, docs.css the article + sidebar-nav layout. The sidebar
+# markup itself is populated by the manifest-driven build in #543; until then
+# the layout renders as a single centred article.
+#
+# {asset_prefix} is the relative path from the page back to site/ (e.g. "" for
+# a root page, "../" for a nested one) so asset links resolve at any depth.
 
 PAGE_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{asset_prefix}assets/tokens.css">
+  <link rel="stylesheet" href="{asset_prefix}assets/docs.css">
   <title>{title}</title>
 </head>
 <body>
-  <main class="doc">
+  <div class="doc-layout">
+    <article class="doc-article">
 {body}
-  </main>
+    </article>
+  </div>
 </body>
 </html>
 """
@@ -106,6 +121,22 @@ def output_name(source: Path) -> str:
     return source.stem.lower().replace("_", "-") + ".html"
 
 
+def copy_assets(site_dir: Path) -> None:
+    """Copy the hand-authored assets (CSS) into ``site_dir/assets``.
+
+    Assets live under tools/site-template so a clean rebuild of site/ can
+    never delete them. Copying (rather than symlinking) keeps the committed
+    site/ self-contained and servable straight from git.
+    """
+    if not ASSETS_SRC.is_dir():
+        sys.exit(f"error: assets source not found: {ASSETS_SRC}")
+    dest = site_dir / "assets"
+    dest.mkdir(parents=True, exist_ok=True)
+    for asset in sorted(ASSETS_SRC.iterdir()):
+        if asset.is_file():
+            shutil.copy2(asset, dest / asset.name)
+
+
 def build_page(source: Path, site_dir: Path, renderer: "mistune.Markdown") -> Path:
     """Render one markdown file into ``site_dir``; return the output path."""
     if not source.is_file():
@@ -117,8 +148,10 @@ def build_page(source: Path, site_dir: Path, renderer: "mistune.Markdown") -> Pa
 
     site_dir.mkdir(parents=True, exist_ok=True)
     out_path = site_dir / output_name(source)
+    # Root-level page, so assets resolve at "assets/...". Nested pages (#544)
+    # will pass a deeper prefix.
     out_path.write_text(
-        PAGE_TEMPLATE.format(title=title, body=body),
+        PAGE_TEMPLATE.format(title=title, body=body, asset_prefix=""),
         encoding="utf-8",
     )
     return out_path
@@ -144,6 +177,8 @@ def main(argv: list[str] | None = None) -> int:
         help="output directory (default: site/ at repo root)",
     )
     args = parser.parse_args(argv)
+
+    copy_assets(args.output_dir)
 
     renderer = make_renderer()
     out_path = build_page(args.source, args.output_dir, renderer)
