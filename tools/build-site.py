@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -133,12 +134,17 @@ def output_name(source: Path) -> str:
 # Manifest
 # --------------------------------------------------------------------------
 
-def load_manifest(manifest_path: Path) -> list[dict]:
-    """Load the manifest and flatten it into an ordered list of page dicts.
+def load_manifest(manifest_path: Path) -> tuple[list[dict], list[str]]:
+    """Load the manifest into (pages, exclude).
 
-    Each returned page carries: source (Path), output (str), nav (str),
-    section (str), kind (str). Missing ``output`` is derived from the source;
-    missing ``kind`` defaults to ``generate``.
+    Each page carries: source (Path), output (str), nav (str), section (str),
+    kind (str). Missing ``output`` is derived from the source; missing ``kind``
+    defaults to ``generate``.
+
+    ``exclude`` is the manifest's top-level list of repo-relative source docs
+    deliberately kept off the site (CLAUDE.md, speaking notes, ...). It lets
+    the unlisted-source check (#545) tell "not on the site on purpose" from
+    "silently forgotten".
     """
     if not manifest_path.is_file():
         sys.exit(f"error: manifest not found: {manifest_path}")
@@ -148,6 +154,7 @@ def load_manifest(manifest_path: Path) -> list[dict]:
         sys.exit(f"error: manifest is not valid JSON: {exc}")
 
     pages: list[dict] = []
+    seen_output: dict[str, Path] = {}
     for section in data.get("sections", []):
         section_title = section.get("title", "")
         for entry in section.get("pages", []):
@@ -155,7 +162,15 @@ def load_manifest(manifest_path: Path) -> list[dict]:
                 sys.exit(f"error: manifest page missing source/nav: {entry!r}")
             source = REPO_ROOT / entry["source"]
             kind = entry.get("kind", "generate")
+            if kind not in ("generate", "copy"):
+                sys.exit(f"error: unknown kind {kind!r} for {entry['source']}")
             output = entry.get("output") or default_output(source, kind)
+            if output in seen_output:
+                sys.exit(
+                    f"error: two manifest pages target the same output "
+                    f"{output!r}: {seen_output[output]} and {source}"
+                )
+            seen_output[output] = source
             pages.append({
                 "source": source,
                 "output": output,
@@ -165,7 +180,8 @@ def load_manifest(manifest_path: Path) -> list[dict]:
             })
     if not pages:
         sys.exit("error: manifest lists no pages")
-    return pages
+    exclude = list(data.get("exclude", []))
+    return pages, exclude
 
 
 def default_output(source: Path, kind: str) -> str:
@@ -205,20 +221,32 @@ def build_nav(pages: list[dict], current_output: str, asset_prefix: str) -> str:
 # Build
 # --------------------------------------------------------------------------
 
-def copy_assets(site_dir: Path) -> None:
+def copy_assets(site_dir: Path) -> set[Path]:
     """Copy the hand-authored assets (CSS) into ``site_dir/assets``.
 
     Assets live under tools/site-template so a clean rebuild of site/ can
     never delete them. Copying (rather than symlinking) keeps the committed
-    site/ self-contained and servable straight from git.
+    site/ self-contained and servable straight from git. Returns the set of
+    files written (resolved), for orphan tracking.
     """
     if not ASSETS_SRC.is_dir():
         sys.exit(f"error: assets source not found: {ASSETS_SRC}")
     dest = site_dir / "assets"
     dest.mkdir(parents=True, exist_ok=True)
+    produced: set[Path] = set()
     for asset in sorted(ASSETS_SRC.iterdir()):
         if asset.is_file():
-            shutil.copy2(asset, dest / asset.name)
+            out = dest / asset.name
+            shutil.copy2(asset, out)
+            produced.add(out.resolve())
+    return produced
+
+
+def files_under(path: Path) -> set[Path]:
+    """Resolved set of every file at/under ``path`` (single file or tree)."""
+    if path.is_dir():
+        return {p.resolve() for p in path.rglob("*") if p.is_file()}
+    return {path.resolve()}
 
 
 def copy_bespoke(page: dict, site_dir: Path) -> Path:
@@ -273,27 +301,168 @@ def render_page(page: dict, pages: list[dict], site_dir: Path,
     return out_path
 
 
-def build_site(manifest_path: Path, site_dir: Path) -> int:
-    pages = load_manifest(manifest_path)
+# --------------------------------------------------------------------------
+# Validation (#545)
+# --------------------------------------------------------------------------
+
+LINK_RE = re.compile(r'(?:href|src)\s*=\s*"([^"]*)"', re.IGNORECASE)
+
+# Schemes / forms that point off-site; never validated as local files.
+_EXTERNAL_PREFIXES = ("http://", "https://", "//", "mailto:", "tel:",
+                      "data:", "javascript:")
+
+
+def _is_external(link: str) -> bool:
+    return link.startswith(_EXTERNAL_PREFIXES)
+
+
+def _exists(target: Path) -> bool:
+    """A link target resolves if it's a file, or a dir with an index.html."""
+    if target.is_dir():
+        return (target / "index.html").exists()
+    return target.exists()
+
+
+def validate_links(site_dir: Path) -> tuple[list, list]:
+    """Classify every internal link into (broken, pending).
+
+    Scans all HTML in ``site_dir`` -- generated and copied alike -- so the whole
+    shipped doc set is checked. A link that doesn't resolve on the site is:
+
+      * pending  -- the same path resolves to a real file in the *repo*, so it's
+                    a live reference to a source that isn't (yet) on the site.
+                    #546 rewrites these to point at GitHub.
+      * broken   -- resolves nowhere, on the site or in the repo: a real defect.
+
+    Because the site mirrors the repo layout (generated root pages come from
+    root docs; copied trees keep their path), resolving the link against
+    REPO_ROOT/<page-dir> is the correct repo-equivalent test.
+    """
+    broken: list[tuple[str, str]] = []
+    pending: list[tuple[str, str]] = []
+    for html in sorted(site_dir.rglob("*.html")):
+        page_dir = html.parent.relative_to(site_dir)
+        text = html.read_text(encoding="utf-8", errors="replace")
+        for raw in LINK_RE.findall(text):
+            link = raw.strip()
+            if not link or link.startswith("#") or _is_external(link):
+                continue
+            target = link.split("#", 1)[0].split("?", 1)[0]
+            if not target:
+                continue
+            if _exists((html.parent / target).resolve()):
+                continue
+            page_rel = str(html.relative_to(site_dir))
+            # Repo-existence is plain: a live source reference may point at a
+            # directory (src/hello/) that has no index.html. #546 rewrites the
+            # whole reference to GitHub regardless of file-vs-dir.
+            if (REPO_ROOT / page_dir / target).resolve().exists():
+                pending.append((page_rel, link))
+            else:
+                broken.append((page_rel, link))
+    return broken, pending
+
+
+def prune_orphans(site_dir: Path, produced: set[Path]) -> list[str]:
+    """Delete files in ``site_dir`` the build did not produce; return their names.
+
+    Keeps site/ an exact mirror of the manifest so a deleted or renamed source
+    can't leave a stale page behind. Everything here is regenerable from source,
+    so removal is safe. Empty directories left over are cleaned up too.
+    """
+    removed: list[str] = []
+    for path in sorted(site_dir.rglob("*")):
+        if path.is_file() and path.resolve() not in produced:
+            removed.append(str(path.relative_to(site_dir)))
+            path.unlink()
+    for d in sorted((p for p in site_dir.rglob("*") if p.is_dir()), reverse=True):
+        try:
+            d.rmdir()  # only succeeds if empty
+        except OSError:
+            pass
+    return removed
+
+
+def find_unlisted(pages: list[dict], exclude: list[str]) -> list[str]:
+    """Root-level *.md not in the manifest and not deliberately excluded.
+
+    Catches docs that silently never made it onto the site.
+    """
+    listed = {p["source"].resolve() for p in pages}
+    excluded = {(REPO_ROOT / e).resolve() for e in exclude}
+    unlisted = []
+    for md in sorted(REPO_ROOT.glob("*.md")):
+        if md.resolve() in listed or md.resolve() in excluded:
+            continue
+        unlisted.append(md.name)
+    return unlisted
+
+
+# --------------------------------------------------------------------------
+# Build
+# --------------------------------------------------------------------------
+
+def build_site(manifest_path: Path, site_dir: Path, strict: bool = False) -> int:
+    pages, exclude = load_manifest(manifest_path)
     site_dir.mkdir(parents=True, exist_ok=True)
-    copy_assets(site_dir)
+
+    produced: set[Path] = set()
+    produced |= copy_assets(site_dir)
 
     renderer = make_renderer()
     generated = copied = 0
     for page in pages:
         if page["kind"] == "generate":
             out_path = render_page(page, pages, site_dir, renderer)
+            produced.add(out_path.resolve())
             generated += 1
-        elif page["kind"] == "copy":
-            out_path = copy_bespoke(page, site_dir)
+        else:  # 'copy' -- kind already validated in load_manifest
+            dest = copy_bespoke(page, site_dir)
+            produced |= files_under(dest)
             copied += 1
-        else:
-            sys.exit(f"error: unknown kind {page['kind']!r} for {page['source']}")
-        rel = out_path.relative_to(REPO_ROOT)
+        rel = out_path.relative_to(REPO_ROOT) if page["kind"] == "generate" \
+            else dest.relative_to(REPO_ROOT)
         print(f"  {page['kind']:<8} {page['source'].name:<26} -> {rel}")
 
     print(f"built {generated} generated + {copied} copied into "
           f"{site_dir.relative_to(REPO_ROOT)}/")
+
+    # ---- Validation ------------------------------------------------------
+    problems = 0
+
+    removed = prune_orphans(site_dir, produced)
+    if removed:
+        print(f"\npruned {len(removed)} stale file(s):")
+        for name in removed:
+            print(f"  - {name}")
+
+    broken, pending = validate_links(site_dir)
+    if broken:
+        problems += len(broken)
+        print(f"\nBROKEN internal links ({len(broken)}):")
+        for page_rel, link in broken:
+            print(f"  {page_rel}: {link}")
+    if pending:
+        distinct = sorted({link for _, link in pending})
+        print(f"\nnote: {len(pending)} link(s) point at repo files not on the "
+              f"site; #546 rewrites these to GitHub (known-pending):")
+        for link in distinct:
+            print(f"  - {link}")
+
+    unlisted = find_unlisted(pages, exclude)
+    if unlisted:
+        problems += len(unlisted)
+        print(f"\nunlisted source docs ({len(unlisted)}) "
+              f"-- add to a manifest section or the 'exclude' list:")
+        for name in unlisted:
+            print(f"  - {name}")
+
+    if problems == 0:
+        print("\nvalidation: clean")
+    else:
+        print(f"\nvalidation: {problems} problem(s)")
+        if strict:
+            return 1
     return 0
 
 
@@ -311,8 +480,12 @@ def main(argv: list[str] | None = None) -> int:
         "--output-dir", type=Path, default=SITE_DIR,
         help="output directory (default: site/ at repo root)",
     )
+    parser.add_argument(
+        "--strict", action="store_true",
+        help="exit non-zero if validation finds real problems (for CI)",
+    )
     args = parser.parse_args(argv)
-    return build_site(args.manifest, args.output_dir)
+    return build_site(args.manifest, args.output_dir, strict=args.strict)
 
 
 if __name__ == "__main__":

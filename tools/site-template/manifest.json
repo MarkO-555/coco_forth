@@ -10,7 +10,15 @@
     "  output  (optional) site-relative output filename; derived from source if omitted",
     "  kind    (optional) 'generate' (markdown -> HTML, default). 'copy' arrives in #544.",
     "",
-    "The page <title> comes from the source's first H1, not from here."
+    "The page <title> comes from the source's first H1, not from here.",
+    "",
+    "'exclude' lists repo-root *.md kept off the site on purpose, so the",
+    "unlisted-source check can tell 'deliberately omitted' from 'forgotten'."
+  ],
+  "exclude": [
+    "CLAUDE.md",
+    "README.md",
+    "presentation-notes.md"
   ],
   "sections": [
     {
