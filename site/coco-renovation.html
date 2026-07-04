@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/docs.css">
-  <title>CoCo Renovation — Modernizing the 6809 Development Experience — CoCo Renovation</title>
+  <title>CoCo Renovation — CoCo Renovation</title>
 </head>
 <body>
   <header class="doc-header">
-    <span class="doc-brand">CoCo Renovation</span>
+    <a class="doc-brand" href="index.html">CoCo Renovation</a>
     <span class="doc-brand-sub">Bare Naked Forth</span>
   </header>
   <div class="doc-layout">
@@ -28,82 +28,40 @@
       <a href="ans-forth-comparison.html">ANS-Forth Comparison</a>
     </nav>
     <article class="doc-article">
-<h1>CoCo Renovation — Modernizing the 6809 Development Experience</h1>
-<p><em>February 19, 2026</em></p>
+<h1>CoCo Renovation</h1>
+<p><em>A manifesto for a machine that outlived its limits.</em></p>
 <hr />
 <h2>The Idea</h2>
-<p>The difference between <em>emulation</em> and <em>renovation</em>. Emulation runs the old thing in a new context. Renovation keeps the hardware authentic but upgrades the tooling layer. Almost nobody does renovation, even when the hardware supports it completely.</p>
-<p>The TRS-80 Color Computer had 64K of RAM, a Motorola 6809 processor, a ROM cartridge slot, and a development experience defined by cassette tapes, 32-column editors, and assemblers that couldn't handle a project of any real size (EDTASM+ on ROM cartridge, saving to cassette or disk). The hardware was never the embarrassing part. The software ecosystem of 1982 was.</p>
-<p>The question: what if you answered &quot;what if Tandy had made better software decisions&quot; with a ROM cartridge you can plug in today?</p>
+<p>Start with the difference between <em>emulation</em> and <em>renovation</em>. Emulation runs the old thing in a new context. Renovation keeps the machine authentic and rebuilds the layer that always held it back. Almost nobody bothers with renovation, even when the hardware invites it.</p>
+<p>The TRS-80 Color Computer had 64K of RAM, a Motorola 6809 processor, and a ROM cartridge slot, wrapped in a development experience defined by cassette tapes, a 32-column editor, and an assembler (EDTASM+) that could not handle a project of any real size. The machine deserved better than the software it shipped with. That gap is the whole opportunity.</p>
+<p>The question that started this project: what about the original CoCo could be improved with modern software practices and hardware? Not answered with nostalgia, but with tools and boards you can actually use today.</p>
 <hr />
 <h2>Why the 6809 Is Worth Renovating</h2>
-<p>The 6809 is not nostalgia — it's an objectively elegant processor:</p>
+<p>The 6809 is not nostalgia. It is an objectively elegant processor:</p>
 <ul>
-<li>Two 16-bit index registers (X, Y)</li>
-<li>Two stack pointers (S and U) — call stack and data stack as first-class concepts</li>
-<li>PC-relative addressing throughout — position-independent code is natural, not a hack</li>
-<li>Clean orthogonal ISA, clearly influenced by the PDP-11</li>
-<li>Rich addressing modes without the irregularities of the Z80 or 6502</li>
+<li>Two 16-bit index registers (X and Y).</li>
+<li>Two stack pointers (S and U), giving you a call stack and a data stack as first-class concepts.</li>
+<li>PC-relative addressing throughout, so position-independent code is natural rather than a hack.</li>
+<li>A clean, orthogonal instruction set, clearly influenced by the PDP-11.</li>
+<li>Rich addressing modes without the irregularities of the Z80 or 6502.</li>
 </ul>
-<p>Writing 6809 assembly is actually pleasant. The ISA isn't the limitation of a vintage CoCo. The cassette interface, the 32-column screen editor, the assembler that couldn't handle a project of real size — those are the limitations. And they're all software.</p>
+<p>Writing 6809 assembly is genuinely pleasant. The silicon was never the problem.</p>
 <hr />
-<h2>The ROM Cartridge as Delivery Mechanism</h2>
-<p>The CoCo pak slot is exactly the right vehicle. It's:</p>
-<ul>
-<li>Non-destructive — pull the cartridge, you have a stock CoCo</li>
-<li>Clean-booting — maps into a well-defined address space</li>
-<li>Designed for this — Tandy intended cartridges to replace or extend the OS</li>
-</ul>
-<p>A modern cartridge with flash storage and an SD card controller could provide a complete self-contained development environment. The flash holds the OS/tools ROM. The SD card holds source files, assembled binaries, and projects.</p>
+<h2>The Limits Were Real, and They Were of Their Time</h2>
+<p>It is tempting to call the CoCo's software ecosystem a bad decision. It wasn't. The cassette interface, the 32-column screen, the assembler that buckled on real projects: each was a reasonable answer to what memory, storage, and silicon cost in 1982. The limitations were real, and they were driven by the hardware economics of the era, not by the machine's potential.</p>
+<p>That is exactly why they lift today. The constraints that shaped the 1982 toolchain, the price of RAM, the slowness of tape, the size of a ROM, are gone. What remains is an elegant processor and an architecture that never got the software it deserved. Renovation is simply giving it that software now, on terms the 1980s could not afford.</p>
 <hr />
-<h2>What the Cartridge Provides</h2>
-<p>A complete on-device renovation environment, fitting comfortably in ROM:</p>
-<table>
-<thead>
-<tr>
-  <th>Component</th>
-  <th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-  <td>Shell</td>
-  <td>Replaces the BASIC prompt; command line with path, history</td>
-</tr>
-<tr>
-  <td>Filesystem driver</td>
-  <td>FAT16 or a simple custom FS on microSD</td>
-</tr>
-<tr>
-  <td>Screen editor</td>
-  <td>Real cursor movement, undo, search — even at 32/40 columns</td>
-</tr>
-<tr>
-  <td>Assembler</td>
-  <td>Macros, labels, local scopes, include files, conditional assembly</td>
-</tr>
-<tr>
-  <td>Linker</td>
-  <td>The thing EDTASM+ most painfully lacked</td>
-</tr>
-<tr>
-  <td>Debug monitor</td>
-  <td>Breakpoints, memory inspection, register display, disassembly</td>
-</tr>
-<tr>
-  <td>Transfer</td>
-  <td>XMODEM or serial bridge for moving files to/from a modern machine</td>
-</tr>
-</tbody>
-</table>
-<p>That's the complete toolchain. It fits in 64K of ROM, leaving the full 64K of RAM for your program.</p>
+<h2>What Renovation Looks Like</h2>
+<p>The original plan imagined a whole toolchain living on the CoCo itself: a shell, an editor, an assembler, a linker in ROM. Reality took a better road, and it starts with a decision about where the work happens.</p>
+<p>Development belongs on a modern machine. A Mac or a Linux box is perfectly suited to cross-compiling 6809 code with mature open-source tools, and it commits none of the CoCo's memory or cycles to the act of writing software. The CoCo is the target. Your desktop is the workshop.</p>
+<p><strong>Bare Naked Forth</strong> fills that workshop: a from-scratch, indirect-threaded Forth kernel for the 6809, paired with a cross-compiler, <code>fc.py</code>, that turns Forth source into a complete DECB binary you load straight into a real machine. This is not hypothetical. A compact ITC kernel with about eighty primitives, a library of reusable words with hand-written 6809 in the hot paths, a thirteen-chapter tutorial, a shelf of demos, and <strong>Space Warp</strong>, a full real-time starship-combat game, all already run on real hardware.</p>
 <hr />
 <h2>The Workflow</h2>
-<p>Write code → save to SD → assemble on-device → run → inspect → iterate.</p>
-<p>Similar in structure to the PyGamer workflow (write externally, deploy, test), except the assembler runs <em>on the CoCo itself</em>. That distinction matters. There's something fundamentally different about programming a machine on itself versus cross-compiling from a laptop. The constraints are present in your hands, not abstracted away. You feel the 64K. You feel the register pressure. The feedback is immediate and embodied.</p>
+<p>Write Forth on your desktop, compile it with <code>fc.py</code> into a DECB binary, test it in an emulator, then deploy the same binary to real hardware over CoCoSDC, FujiNet, or DriveWire.</p>
+<p>The constraints do not disappear because the toolchain is modern. You still feel the 64K. You still feel the register pressure. Cycles are still currency on a 0.89 MHz machine, and the gap between a threaded word and a hand-written <code>CODE</code> word is something you measure, not guess. Renovation removes the accidental friction of 1982 and keeps the essential constraints that make the machine worth programming. And because development lives off the machine, every byte and every cycle stays free for the software itself: streamlined, optimized games and applications.</p>
 <hr />
-<h2>What Already Exists</h2>
-<p>The CoCo community has gotten partway there. The pieces exist, mostly as cross-development tools rather than a cohesive on-device experience:</p>
+<h2>The Ecosystem We Build On</h2>
+<p>The CoCo community never stopped building. We stand on it rather than reinventing it:</p>
 <table>
 <thead>
 <tr>
@@ -113,42 +71,57 @@
 </thead>
 <tbody>
 <tr>
-  <td>CoCoSDC</td>
-  <td>SD card storage interface for real CoCo hardware</td>
-</tr>
-<tr>
-  <td>DriveWire 4</td>
-  <td>Modern PC acts as disk server over serial connection</td>
-</tr>
-<tr>
-  <td>CMOC</td>
-  <td>Working C compiler targeting 6809/CoCo</td>
-</tr>
-<tr>
-  <td>NitrOS-9</td>
-  <td>Modernized OS-9 — a real multitasking OS for the CoCo</td>
-</tr>
-<tr>
   <td>lwasm</td>
-  <td>Excellent modern 6809 assembler (cross-development)</td>
-</tr>
-<tr>
-  <td>toolshed</td>
-  <td>Cross-development utilities</td>
+  <td>Excellent modern 6809 cross-assembler</td>
 </tr>
 <tr>
   <td>XRoar / MAME</td>
   <td>Accurate emulators with debugging support</td>
 </tr>
+<tr>
+  <td>CoCoSDC</td>
+  <td>SD-card storage interface for real CoCo hardware</td>
+</tr>
+<tr>
+  <td>CoCoFujiNet</td>
+  <td>WiFi peripheral with virtual disks and network services for real CoCos</td>
+</tr>
+<tr>
+  <td>DriveWire 4</td>
+  <td>A modern PC acting as a disk server over serial</td>
+</tr>
+<tr>
+  <td>NitrOS-9</td>
+  <td>Modernized OS-9, a real multitasking OS for the CoCo</td>
+</tr>
+<tr>
+  <td>CMOC</td>
+  <td>A working C compiler targeting the 6809</td>
+</tr>
+<tr>
+  <td>toolshed</td>
+  <td>Cross-development utilities</td>
+</tr>
 </tbody>
 </table>
-<p>What doesn't exist: a self-contained on-device environment that makes the whole workflow feel cohesive and modern without leaving the machine.</p>
+<p>Bare Naked Forth is our own addition to that shelf: a modern take on one of computing's oldest languages. It pares Forth down to a bare, cross-compiled ITC kernel, and lets you drop into hand-written 6809 wherever it counts, sitting closer to the metal than a traditional Forth while staying small and legible enough to read end to end.</p>
 <hr />
-<h2>The Philosophical Point</h2>
-<p>Why <em>wouldn't</em> you do this?</p>
-<p>The hardware works. The processor is elegant. The only things that made it feel limited were the ecosystem choices of 1982. A ROM cartridge is just a different set of software ROM choices. You're not modifying the hardware, you're not emulating anything — you're answering the question &quot;what if they'd made better software decisions&quot; with a physical object you can plug in and pull out.</p>
-<p>This isn't about making the CoCo into something it isn't. It's about making it into what it always <em>could</em> have been. The 6809 was running multitasking operating systems (OS-9) in the early 1980s. The hardware had headroom. The tooling didn't keep up.</p>
-<p>Renovating the tooling layer of a functioning vintage platform preserves authenticity — you're still writing 6809 assembly, still constrained to 64K, still running on real hardware — while removing the friction that was always accidental rather than essential.</p>
+<h2>The Hardware Catches Up</h2>
+<p>The original vision asked for one more thing: a modern cartridge that plugs into the pak slot, connects to the bus, and provides storage and peripherals without modifying the machine. At the time that was a wish. It is now being built, by others, on the RP2350.</p>
+<p>The RP2350 is a fast, inexpensive microcontroller with enough I/O and speed to sit on the CoCo's expansion bus directly, through level-shifters, and answer the 6809 in real time.</p>
+<ul>
+<li>Henry Strickland's <a href="https://github.com/strickyak/copico-centipede"><strong>copico-centipede</strong></a>, built on his RP2350 <strong>Centipede</strong> boards, exposes 46 usable GPIO lines covering most of the CoCo's expansion-port bus. It uses the RP2350 to talk to the 6809 directly, and presents itself as virtual peripherals addressable from 6809 code.</li>
+<li>The latest, still-unreleased RP2350 <strong>CoCoFujiNet</strong> will have this ability built in.</li>
+</ul>
+<p>None of these do on-device compilation, and they do not need to. They deliver the other half of the renovation: a direct, modern connection to the slot, with storage and virtual peripherals, on authentic hardware.</p>
+<hr />
+<h2>The CoCo Is an Idea Now</h2>
+<p>Here is the part that changes everything. Spend enough time with XRoar and the other emulators and a quiet realization sets in: the Color Computer is no longer a fixed hardware specification. It is an abstract concept. A precise, well-understood, faithfully reproduced concept, but a concept all the same.</p>
+<p>That is not a loss. It is the answer to two problems at once. Real CoCos are finite and aging, and the factory will never make another. And the physical constraints of 1982 were bound to that specific silicon and its price. When the machine becomes an idea, both problems dissolve. An emulator hands a new generation an authentic CoCo without a single scarce chip. A modern board on the bus extends what that machine can do without betraying what it is. The definition of a CoCo widens to include everything faithful to its architecture, and the 1980s ceiling stops being a ceiling.</p>
+<p>This is how the Color Computer survives its own hardware. Not frozen in a display case, but running: emulated, reimplemented, extended, and programmed with tools it never had. The renovation is not only of the software or the peripherals. It is of the idea of the machine itself, handed forward.</p>
+<hr />
+<h2>Why <em>Wouldn't</em> You?</h2>
+<p>The hardware works. The processor is elegant. The limits were real once, and the reasons for them are gone. This was never about making the CoCo into something it isn't. It is about making it into what it always <em>could</em> have been, and what it can still become. You write 6809. You live in 64K. You run on real iron, on a faithful emulator, or on a board that speaks to the bus in real time. The Color Computer's best years are not necessarily behind it. That is the whole point of renovating instead of remembering.</p>
 
     </article>
   </div>
