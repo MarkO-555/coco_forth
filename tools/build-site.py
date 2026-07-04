@@ -87,7 +87,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <header class="doc-header">
-    <span class="doc-brand">CoCo Renovation</span>
+    <a class="doc-brand" href="{asset_prefix}index.html">CoCo Renovation</a>
     <span class="doc-brand-sub">Bare Naked Forth</span>
   </header>
   <div class="doc-layout">
@@ -101,6 +101,97 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <footer class="doc-footer">
     Generated from source by <code>build-site.py</code>. Do not hand-edit.
   </footer>
+</body>
+</html>
+"""
+
+# The landing page (#547). A cover in the book's visual language (rainbow bar,
+# green hero, serif display type) plus a card grid whose sections come from the
+# manifest, so the front door stays in sync with the site. {version} is read
+# from the kernel so it can't drift; {nav_cards} is generated.
+
+LANDING_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/landing.css">
+  <title>CoCo Renovation — Bare Naked Forth</title>
+</head>
+<body>
+  <div class="cover">
+    <div class="cover-rainbow"></div>
+
+    <header class="cover-hero">
+      <div class="cover-eyebrow">Radio Shack TRS-80 · Version {version}</div>
+      <div class="cover-title">Bare Naked <span>Forth</span></div>
+      <div class="cover-platform">A modern bare metal approach for cross
+        developing binaries for the TRS-80 Color Computer.</div>
+    </header>
+
+    <section class="cover-intro">
+      <img src="tutorials/images/cover-1.png" alt="A CoCo character at a
+        workbench with a Color Computer, soldering iron and Forth listing in hand">
+      <div class="lead">
+        <p>Program in Forth on your modern desktop, and compile to a DECB
+          binary that immediately runs on hardware and popular emulators.</p>
+        <p>That's the whole idea: the toolchain lives on your development
+          machine, not the CoCo. Nothing gets compiled on the target and
+          nothing extra rides along, just your finished program, loaded and
+          run. <strong>Bare Naked Forth</strong> is that cross-compiler, paired
+          with a from-scratch 6809 ITC-style Forth kernel that stays out of the
+          way.</p>
+        <p>Edit, compile and test with modern open source tools like lwasm and
+          XRoar, and then deploy the binaries to vintage hardware using CoCoSDC,
+          FujiNet or DriveWire. The demos below (Tetris, sound, full-screen
+          graphics) are ready to explore, and our detailed tutorial takes you
+          from your first Forth word to a running program on your CoCo.</p>
+      </div>
+    </section>
+
+    <nav class="cover-nav">
+{nav_cards}
+    </nav>
+
+    <section class="cover-feature">
+      <h2>Built with it</h2>
+      <a class="feature" href="https://ugufru.itch.io/space-warp">
+        <img src="assets/spacewarp.jpg" alt="Space Warp cover art:
+          starfighters and aliens over a green tactical grid">
+        <div class="feature-text">
+          <div class="feature-title">Space Warp</div>
+          <p>You command the starship Endever against an invading Jovian fleet,
+            and it all runs in real time. The Jovians aren't targets, they're
+            pilots: each has its own genome and a shifting mood. Aggressive aces
+            close to knife-fighting range and fire fast; wounded ones flee
+            glowing blue, and killing one turns its packmates red with rage.</p>
+          <p>Masers are your fast beam, deadliest up close and needing a clear
+            line of sight. Triton missiles finish the job at any range, but each
+            base holds only a limited stockpile. And the galaxy keeps moving:
+            while you line up a shot, a base across the map is under attack.
+            Clear the fleet before the bases fall.</p>
+          <p class="feature-cta">Play Space Warp on itch.io →</p>
+        </div>
+      </a>
+    </section>
+
+    <section class="cover-gallery">
+      <h2>More demos</h2>
+      <a class="strip" href="tutorials/demos/index.html">
+        <img src="tutorials/demos/images/tetris.png" alt="Tetris">
+        <img src="tutorials/demos/images/kaleidoscope.png" alt="Kaleidoscope">
+        <img src="tutorials/demos/images/rain.png" alt="Rain">
+        <img src="tutorials/demos/images/bounce.png" alt="Bounce">
+      </a>
+    </section>
+
+    <footer class="cover-footer">
+      Bare Naked Forth {version}. Every page on this site is generated from
+      source by <code>build-site.py</code> — see
+      <a href="https://github.com/ugufru/coco/blob/main/PUBLISHING.md">PUBLISHING.md</a>.
+    </footer>
+  </div>
 </body>
 </html>
 """
@@ -135,6 +226,23 @@ def derive_title(md_text: str, fallback: str) -> str:
 def output_name(source: Path) -> str:
     """Map a source path to its site-relative output filename."""
     return source.stem.lower().replace("_", "-") + ".html"
+
+
+def read_version() -> str:
+    """Read the shipped version from the kernel (KERN_VERSION, packed BCD).
+
+    Sourcing it from kernel.asm keeps the landing page from drifting out of
+    sync the way reference.html once did (#548). Falls back to '1.2'.
+    """
+    try:
+        text = (REPO_ROOT / "kernel" / "kernel.asm").read_text(encoding="utf-8")
+        m = re.search(r"KERN_VERSION\s+EQU\s+\$([0-9A-Fa-f]{4})", text)
+        if m:
+            v = int(m.group(1), 16)
+            return f"{v >> 8}.{v & 0xFF}"
+    except OSError:
+        pass
+    return "1.2"
 
 
 # --------------------------------------------------------------------------
@@ -279,6 +387,34 @@ def copy_bespoke(page: dict, site_dir: Path) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, dest)
     return dest
+
+
+def build_landing(pages: list[dict], site_dir: Path, version: str) -> Path:
+    """Generate site/index.html: cover + manifest-driven top-level nav cards."""
+    blocks: list[str] = []
+    current_section = None
+    for page in pages:
+        if page["section"] != current_section:
+            if current_section is not None:
+                blocks.append("      </div>")
+            current_section = page["section"]
+            blocks.append(f"      <h2>{current_section}</h2>")
+            blocks.append('      <div class="cards">')
+        blocks.append(
+            f'        <a class="card" href="{page["output"]}">'
+            f'<span class="card-arrow">→</span>'
+            f'<span class="card-title">{page["nav"]}</span></a>'
+        )
+    if current_section is not None:
+        blocks.append("      </div>")
+    nav_cards = "\n".join(blocks)
+
+    out_path = site_dir / "index.html"
+    out_path.write_text(
+        LANDING_TEMPLATE.format(version=version, nav_cards=nav_cards),
+        encoding="utf-8",
+    )
+    return out_path
 
 
 def render_page(page: dict, pages: list[dict], site_dir: Path,
@@ -494,7 +630,12 @@ def build_site(manifest_path: Path, site_dir: Path, strict: bool = False,
             else dest.relative_to(REPO_ROOT)
         print(f"  {page['kind']:<8} {page['source'].name:<26} -> {rel}")
 
-    print(f"built {generated} generated + {copied} copied into "
+    landing = build_landing(pages, site_dir, read_version())
+    produced.add(landing.resolve())
+    print(f"  landing   index.html                 -> "
+          f"{landing.relative_to(REPO_ROOT)}")
+
+    print(f"built {generated} generated + {copied} copied + 1 landing into "
           f"{site_dir.relative_to(REPO_ROOT)}/")
 
     # ---- Rewrite source links to GitHub (#546) ---------------------------

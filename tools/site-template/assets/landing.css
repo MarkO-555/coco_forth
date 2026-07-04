@@ -1,0 +1,228 @@
+/* landing.css -- the site cover / landing page (#547).
+ *
+ * Reuses the tutorial book's cover language (rainbow bar, green hero, serif
+ * display type) so the front door matches the book, then adds a card grid for
+ * top-level navigation. Depends on tokens.css for palette and type.
+ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.cover {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--surface);
+  min-height: 100vh;
+}
+
+/* ---- Rainbow bar (from the book cover) ---------------------------------- */
+
+.cover-rainbow {
+  height: 20px;
+  background: linear-gradient(to right,
+    #c0392b    0%,   #c0392b  14.28%,
+    #e67e22 14.28%,  #e67e22  28.57%,
+    #f1c40f 28.57%,  #f1c40f  42.85%,
+    #27ae60 42.85%,  #27ae60  57.14%,
+    #2980b9 57.14%,  #2980b9  71.43%,
+    #8e44ad 71.43%,  #8e44ad  85.71%,
+    #2c3e50 85.71%
+  );
+}
+
+/* ---- Hero --------------------------------------------------------------- */
+
+.cover-hero {
+  background: var(--green-solid);
+  color: #fff;
+  padding: 48px 64px 40px;
+}
+
+.cover-eyebrow {
+  font-size: 0.82em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+
+.cover-title {
+  font-size: 3.2em;
+  font-weight: bold;
+  text-transform: uppercase;
+  line-height: 1.05;
+  margin-bottom: 14px;
+}
+
+.cover-title span { color: #c8e6c8; }
+
+.cover-platform {
+  font-style: italic;
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+/* ---- Intro (illustration + lead copy) ----------------------------------- */
+
+.cover-intro {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+  padding: 40px 64px 24px;
+}
+
+.cover-intro img {
+  width: 300px;
+  flex: none;
+  border-radius: 4px;
+}
+
+.cover-intro .lead p { margin: 0 0 1rem; }
+.cover-intro .lead p:first-child { font-size: 1.18em; color: var(--green-dark); }
+.cover-intro .lead p:last-child { margin-bottom: 0; }
+
+/* ---- Top-level nav cards ------------------------------------------------- */
+
+.cover-nav { padding: 16px 64px 32px; }
+
+.cover-nav h2,
+.cover-feature h2,
+.cover-gallery h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.76em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--green-light);
+  padding-bottom: 0.4rem;
+  margin: 1.8rem 0 1rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  display: block;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--green-solid);
+  border-radius: 4px;
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+  color: var(--green-dark);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  background: var(--green-light);
+}
+
+.card .card-title { font-weight: bold; }
+.card .card-arrow { float: right; color: var(--green-solid); }
+
+/* ---- Featured project (Space Warp) -------------------------------------- */
+
+.cover-feature { padding: 8px 64px 16px; }
+
+.feature {
+  display: flex;
+  gap: 22px;
+  align-items: stretch;
+  text-decoration: none;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--green-solid);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.feature:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1); }
+
+.feature img {
+  width: 260px;
+  flex: none;
+  object-fit: cover;
+  display: block;
+}
+
+.feature-text { padding: 20px 26px 20px 0; align-self: center; }
+
+.feature-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: var(--green-dark);
+  margin-bottom: 8px;
+}
+
+.feature-text p { margin: 0 0 0.7rem; color: var(--muted); }
+
+.feature-cta {
+  margin-bottom: 0;
+  color: var(--green-solid);
+  font-weight: bold;
+}
+
+/* ---- Demo gallery strip (flavor) ---------------------------------------- */
+
+.cover-gallery { padding: 8px 64px 40px; }
+
+.cover-gallery .strip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  text-decoration: none;
+}
+
+.cover-gallery img {
+  height: 116px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transition: border-color 0.08s ease, box-shadow 0.08s ease;
+}
+
+.cover-gallery a.strip:hover img {
+  border-color: var(--green-solid);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Footer -------------------------------------------------------------- */
+
+.cover-footer {
+  padding: 20px 64px 44px;
+  color: var(--muted);
+  font-size: 0.85em;
+  font-style: italic;
+  border-top: 1px solid var(--border-soft);
+}
+
+.cover-footer a { color: var(--green-solid); }
+
+/* ---- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .cover-hero, .cover-intro, .cover-nav, .cover-feature, .cover-gallery,
+  .cover-footer {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .cover-intro { flex-direction: column; align-items: flex-start; }
+  .cover-intro img { width: 100%; }
+  .cover-title { font-size: 2.2em; }
+  .feature { flex-direction: column; }
+  .feature img { width: 100%; }
+  .feature-text { padding: 0 20px 18px; }
+}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/landing.css">
+  <title>CoCo Renovation — Bare Naked Forth</title>
+</head>
+<body>
+  <div class="cover">
+    <div class="cover-rainbow"></div>
+
+    <header class="cover-hero">
+      <div class="cover-eyebrow">Radio Shack TRS-80 · Version 1.2</div>
+      <div class="cover-title">Bare Naked <span>Forth</span></div>
+      <div class="cover-platform">A modern bare metal approach for cross
+        developing binaries for the TRS-80 Color Computer.</div>
+    </header>
+
+    <section class="cover-intro">
+      <img src="tutorials/images/cover-1.png" alt="A CoCo character at a
+        workbench with a Color Computer, soldering iron and Forth listing in hand">
+      <div class="lead">
+        <p>Program in Forth on your modern desktop, and compile to a DECB
+          binary that immediately runs on hardware and popular emulators.</p>
+        <p>That's the whole idea: the toolchain lives on your development
+          machine, not the CoCo. Nothing gets compiled on the target and
+          nothing extra rides along, just your finished program, loaded and
+          run. <strong>Bare Naked Forth</strong> is that cross-compiler, paired
+          with a from-scratch 6809 ITC-style Forth kernel that stays out of the
+          way.</p>
+        <p>Edit, compile and test with modern open source tools like lwasm and
+          XRoar, and then deploy the binaries to vintage hardware using CoCoSDC,
+          FujiNet or DriveWire. The demos below (Tetris, sound, full-screen
+          graphics) are ready to explore, and our detailed tutorial takes you
+          from your first Forth word to a running program on your CoCo.</p>
+      </div>
+    </section>
+
+    <nav class="cover-nav">
+      <h2>The Book</h2>
+      <div class="cards">
+        <a class="card" href="tutorials/index.html"><span class="card-arrow">→</span><span class="card-title">Tutorial</span></a>
+        <a class="card" href="reference.html"><span class="card-arrow">→</span><span class="card-title">Language Reference</span></a>
+      </div>
+      <h2>About</h2>
+      <div class="cards">
+        <a class="card" href="coco-renovation.html"><span class="card-arrow">→</span><span class="card-title">The Vision</span></a>
+        <a class="card" href="roadmap.html"><span class="card-arrow">→</span><span class="card-title">Roadmap</span></a>
+      </div>
+      <h2>Guides</h2>
+      <div class="cards">
+        <a class="card" href="project-setup.html"><span class="card-arrow">→</span><span class="card-title">Project Setup</span></a>
+        <a class="card" href="contributing.html"><span class="card-arrow">→</span><span class="card-title">Contributing</span></a>
+      </div>
+      <h2>Reference</h2>
+      <div class="cards">
+        <a class="card" href="resources.html"><span class="card-arrow">→</span><span class="card-title">Resources</span></a>
+        <a class="card" href="ans-forth-comparison.html"><span class="card-arrow">→</span><span class="card-title">ANS-Forth Comparison</span></a>
+      </div>
+    </nav>
+
+    <section class="cover-feature">
+      <h2>Built with it</h2>
+      <a class="feature" href="https://ugufru.itch.io/space-warp">
+        <img src="assets/spacewarp.jpg" alt="Space Warp cover art:
+          starfighters and aliens over a green tactical grid">
+        <div class="feature-text">
+          <div class="feature-title">Space Warp</div>
+          <p>You command the starship Endever against an invading Jovian fleet,
+            and it all runs in real time. The Jovians aren't targets, they're
+            pilots: each has its own genome and a shifting mood. Aggressive aces
+            close to knife-fighting range and fire fast; wounded ones flee
+            glowing blue, and killing one turns its packmates red with rage.</p>
+          <p>Masers are your fast beam, deadliest up close and needing a clear
+            line of sight. Triton missiles finish the job at any range, but each
+            base holds only a limited stockpile. And the galaxy keeps moving:
+            while you line up a shot, a base across the map is under attack.
+            Clear the fleet before the bases fall.</p>
+          <p class="feature-cta">Play Space Warp on itch.io →</p>
+        </div>
+      </a>
+    </section>
+
+    <section class="cover-gallery">
+      <h2>More demos</h2>
+      <a class="strip" href="tutorials/demos/index.html">
+        <img src="tutorials/demos/images/tetris.png" alt="Tetris">
+        <img src="tutorials/demos/images/kaleidoscope.png" alt="Kaleidoscope">
+        <img src="tutorials/demos/images/rain.png" alt="Rain">
+        <img src="tutorials/demos/images/bounce.png" alt="Bounce">
+      </a>
+    </section>
+
+    <footer class="cover-footer">
+      Bare Naked Forth 1.2. Every page on this site is generated from
+      source by <code>build-site.py</code> — see
+      <a href="https://github.com/ugufru/coco/blob/main/PUBLISHING.md">PUBLISHING.md</a>.
+    </footer>
+  </div>
+</body>
+</html>

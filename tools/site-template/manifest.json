@@ -18,6 +18,7 @@
   "exclude": [
     "CLAUDE.md",
     "README.md",
+    "PUBLISHING.md",
     "presentation-notes.md"
   ],
   "sections": [

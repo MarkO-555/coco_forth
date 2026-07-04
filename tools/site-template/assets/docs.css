@@ -43,7 +43,10 @@ body {
   font-size: 1.3rem;
   font-weight: bold;
   color: var(--green-dark);
+  text-decoration: none;
 }
+
+a.doc-brand:hover { color: var(--green-solid); }
 
 .doc-brand-sub {
   font-style: italic;
